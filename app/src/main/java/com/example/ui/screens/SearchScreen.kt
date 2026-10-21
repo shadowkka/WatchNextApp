@@ -37,16 +37,54 @@ fun SearchScreen(
     var selectedQuality by remember { mutableStateOf<String?>(null) }
     var selectedVoice by remember { mutableStateOf<String?>(null) }
 
-    var results by remember { mutableStateOf<List<TorrentSearchResult>>(emptyList()) }
+    var rawResults by remember { mutableStateOf<List<TorrentSearchResult>>(emptyList()) }
     var isSearching by remember { mutableStateOf(false) }
 
     var selectedForAdd by remember { mutableStateOf<TorrentSearchResult?>(null) }
 
-    LaunchedEffect(searchQuery, selectedKind, selectedQuality, selectedVoice) {
-        if (searchQuery.isNotBlank()) {
+    // Search on query or kind change with debounce
+    LaunchedEffect(searchQuery, selectedKind) {
+        val q = searchQuery.trim()
+        selectedQuality = null
+        selectedVoice = null
+        if (q.isNotBlank()) {
+            kotlinx.coroutines.delay(400)
             isSearching = true
-            results = onSearch(searchQuery, selectedKind, 0, selectedVoice, selectedQuality)
+            try {
+                rawResults = onSearch(q, selectedKind, 0, null, null)
+            } catch (_: Exception) {
+                rawResults = emptyList()
+            } finally {
+                isSearching = false
+            }
+        } else {
+            rawResults = emptyList()
             isSearching = false
+        }
+    }
+
+    // Dynamic filters extracted directly from real search results
+    val availableVoices = remember(rawResults) {
+        rawResults.flatMap { it.voices }
+            .map { it.trim() }
+            .filter { it.isNotBlank() && !it.contains("не указан", ignoreCase = true) }
+            .distinct()
+            .sorted()
+    }
+
+    val availableQualities = remember(rawResults) {
+        val standard = listOf("2160p", "1080p", "720p", "4K")
+        standard.filter { q ->
+            rawResults.any { it.quality.contains(q, ignoreCase = true) }
+        }
+    }
+
+    // Fast, instant client-side filtering without network lag
+    val displayResults = remember(rawResults, selectedVoice, selectedQuality) {
+        rawResults.filter { item ->
+            val matchesVoice = selectedVoice == null || item.voices.any { it.contains(selectedVoice!!, ignoreCase = true) }
+            val matchesQuality = selectedQuality == null || item.quality.contains(selectedQuality!!, ignoreCase = true)
+            matchesVoice && matchesQuality
         }
     }
 
@@ -86,12 +124,13 @@ fun SearchScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Kind & quick filter chips in single smooth row
+                // Kind selector & Dynamic filter chips
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     FilterChip(
                         selected = selectedKind == PackKind.SERIES,
@@ -105,7 +144,18 @@ fun SearchScreen(
                         label = { Text("Фильмы", fontSize = 12.sp) }
                     )
 
-                    listOf("1080p", "4K", "720p").forEach { q ->
+                    if (selectedQuality != null || selectedVoice != null) {
+                        SuggestionChip(
+                            onClick = {
+                                selectedQuality = null
+                                selectedVoice = null
+                            },
+                            label = { Text("Сбросить", fontSize = 11.sp, color = CyanPrimary) }
+                        )
+                    }
+
+                    // Dynamically extracted qualities from actual results
+                    availableQualities.forEach { q ->
                         FilterChip(
                             selected = selectedQuality == q,
                             onClick = { selectedQuality = if (selectedQuality == q) null else q },
@@ -113,7 +163,8 @@ fun SearchScreen(
                         )
                     }
 
-                    listOf("LostFilm", "HDRezka", "Кубик в кубе", "Дубляж").forEach { v ->
+                    // Dynamically extracted studios/voices from actual results
+                    availableVoices.forEach { v ->
                         FilterChip(
                             selected = selectedVoice == v,
                             onClick = { selectedVoice = if (selectedVoice == v) null else v },
@@ -134,7 +185,7 @@ fun SearchScreen(
                 CircularProgressIndicator(
                     modifier = Modifier.align(Alignment.Center)
                 )
-            } else if (results.isEmpty()) {
+            } else if (displayResults.isEmpty()) {
                 Column(
                     modifier = Modifier
                         .align(Alignment.Center)
@@ -149,7 +200,7 @@ fun SearchScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Ничего не найдено",
+                        text = if (rawResults.isNotEmpty()) "Нет раздач с выбранными фильтрами" else "Ничего не найдено",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -162,7 +213,7 @@ fun SearchScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding = PaddingValues(top = 4.dp, bottom = 88.dp)
                 ) {
-                    items(results) { item ->
+                    items(displayResults) { item ->
                         CleanSearchResultCard(
                             result = item,
                             onAdd = { selectedForAdd = item }

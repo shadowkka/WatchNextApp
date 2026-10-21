@@ -2,9 +2,11 @@ package com.example.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -120,8 +122,9 @@ fun SubscriptionsScreen(
     if (showAddDialog) {
         var showName by remember { mutableStateOf("") }
         var selectedTvmazeId by remember { mutableStateOf<Int?>(null) }
-        var preferredQuality by remember { mutableStateOf("1080p") }
-        var preferredVoice by remember { mutableStateOf("LostFilm") }
+        var modeAnyRelease by remember { mutableStateOf(true) }
+        var preferredQuality by remember { mutableStateOf("Любое") }
+        var preferredVoice by remember { mutableStateOf("Любая") }
         var showSuggestions by remember { mutableStateOf<List<ShowSearchResult>>(emptyList()) }
         var isSearchingShows by remember { mutableStateOf(false) }
 
@@ -253,24 +256,83 @@ fun SubscriptionsScreen(
                         }
                     }
 
-                    Text("Качество:", style = MaterialTheme.typography.labelSmall)
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        listOf("1080p", "4K", "720p").forEach { q ->
-                            FilterChip(
-                                selected = preferredQuality == q,
-                                onClick = { preferredQuality = q },
-                                label = { Text(q, fontSize = 11.sp) }
-                            )
-                        }
+                    Text("Режим уведомлений:", style = MaterialTheme.typography.labelSmall)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        FilterChip(
+                            selected = modeAnyRelease,
+                            onClick = {
+                                modeAnyRelease = true
+                                preferredQuality = "Любое"
+                                preferredVoice = "Любая"
+                            },
+                            label = { Text("Любой релиз", fontSize = 11.sp) },
+                            modifier = Modifier.weight(1f)
+                        )
+                        FilterChip(
+                            selected = !modeAnyRelease,
+                            onClick = { modeAnyRelease = false },
+                            label = { Text("В нужной озвучке", fontSize = 11.sp) },
+                            modifier = Modifier.weight(1f)
+                        )
                     }
 
-                    Text("Озвучка:", style = MaterialTheme.typography.labelSmall)
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        listOf("LostFilm", "HDRezka", "Кубик в кубе", "Любая").forEach { v ->
-                            FilterChip(
-                                selected = preferredVoice == v,
-                                onClick = { preferredVoice = v },
-                                label = { Text(v, fontSize = 11.sp) }
+                    if (modeAnyRelease) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "🔔 Серия будет предложена сразу при выходе первого релиза на трекерах (в любом качестве и озвучке).",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(8.dp),
+                                lineHeight = 15.sp
+                            )
+                        }
+                    } else {
+                        Text("Качество:", style = MaterialTheme.typography.labelSmall)
+                        Row(
+                            modifier = Modifier.horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            listOf("Любое", "1080p", "4K", "720p").forEach { q ->
+                                FilterChip(
+                                    selected = preferredQuality == q,
+                                    onClick = { preferredQuality = q },
+                                    label = { Text(q, fontSize = 11.sp) }
+                                )
+                            }
+                        }
+
+                        Text("Озвучка:", style = MaterialTheme.typography.labelSmall)
+                        Row(
+                            modifier = Modifier.horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            listOf("Любая", "LostFilm", "HDRezka", "Кубик в Кубе", "Red Head Sound", "Дубляж", "NewStudio").forEach { v ->
+                                FilterChip(
+                                    selected = preferredVoice == v,
+                                    onClick = { preferredVoice = v },
+                                    label = { Text(v, fontSize = 11.sp) }
+                                )
+                            }
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "ℹ️ Озвучка определяется автоматически по названию торрент-раздачи на трекерах. Серия будет предложена только при совпадении озвучки.",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(8.dp),
+                                lineHeight = 15.sp
                             )
                         }
                     }
@@ -349,8 +411,10 @@ fun CleanSubscriptionCard(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                QualityChip(quality = sub.preferredQuality)
-                VoiceChip(voice = sub.preferredVoice)
+                val qText = if (sub.preferredQuality.isBlank() || sub.preferredQuality.equals("Любое", ignoreCase = true)) "Любое качество" else sub.preferredQuality
+                val vText = if (sub.preferredVoice.isBlank() || sub.preferredVoice.equals("Любая", ignoreCase = true)) "Любая озвучка" else sub.preferredVoice
+                QualityChip(quality = qText)
+                VoiceChip(voice = vText)
 
                 val (statusColor, statusBg) = when (sub.status) {
                     SubscriptionStatus.ACTIVE -> Pair(StatusBlue, StatusBlue.copy(alpha = 0.12f))

@@ -3,6 +3,7 @@ package com.example.data
 import com.example.data.api.*
 import com.example.model.*
 import com.example.util.TorrentParser
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -265,6 +266,7 @@ class WatchNextRepository(
                         _lastLog.value = "Синхронизировано с сервером WatchNext"
                     }
                 } catch (e: Exception) {
+                    if (e is CancellationException) throw e
                     if (showIndicator) {
                         _lastLog.value = "Ошибка связи с сервером: ${e.localizedMessage ?: "Недоступен"}"
                     }
@@ -275,7 +277,7 @@ class WatchNextRepository(
                 }
             } else {
                 if (showIndicator) {
-                    kotlinx.coroutines.delay(300)
+                    delay(300)
                     _isRefreshing.value = false
                     _lastLog.value = "Локальные данные очереди обновлены"
                 }
@@ -293,6 +295,7 @@ class WatchNextRepository(
                     api.togglePause()
                     refresh()
                 } catch (e: Exception) {
+                    if (e is CancellationException) throw e
                     _lastLog.value = "Ошибка паузы: ${e.localizedMessage}"
                 }
             }
@@ -325,6 +328,7 @@ class WatchNextRepository(
                     refresh()
                     Result.success("Раздача добавлена на сервер")
                 } catch (e: Exception) {
+                    if (e is CancellationException) throw e
                     Result.failure(e)
                 }
             }
@@ -384,6 +388,7 @@ class WatchNextRepository(
                     api.setPackStart(hash, ApiSetStartRequest(season, startEpisode))
                     refresh()
                 } catch (e: Exception) {
+                    if (e is CancellationException) throw e
                     _lastLog.value = "Ошибка /from: ${e.localizedMessage}"
                 }
             }
@@ -410,6 +415,7 @@ class WatchNextRepository(
                     api.finishPack(hash)
                     refresh()
                 } catch (e: Exception) {
+                    if (e is CancellationException) throw e
                     _lastLog.value = "Ошибка /finish: ${e.localizedMessage}"
                 }
             }
@@ -430,6 +436,7 @@ class WatchNextRepository(
                     api.retryPack(hash)
                     refresh()
                 } catch (e: Exception) {
+                    if (e is CancellationException) throw e
                     _lastLog.value = "Ошибка /retry: ${e.localizedMessage}"
                 }
             }
@@ -450,6 +457,7 @@ class WatchNextRepository(
                     api.deletePack(hash)
                     refresh()
                 } catch (e: Exception) {
+                    if (e is CancellationException) throw e
                     _lastLog.value = "Ошибка удаления: ${e.localizedMessage}"
                 }
             }
@@ -469,6 +477,7 @@ class WatchNextRepository(
                     refresh()
                     Result.success("Серия удалена")
                 } catch (e: Exception) {
+                    if (e is CancellationException) throw e
                     val msg = e.localizedMessage ?: "Ошибка удаления серии"
                     _lastLog.value = "Ошибка удаления серии: $msg"
                     Result.failure(e)
@@ -490,14 +499,9 @@ class WatchNextRepository(
         return Result.success("Серия удалена")
     }
 
-    suspend fun updateLimits(count: Int, capGb: Float?, reserveGb: Float) {
+    suspend fun syncLimitsToServer(count: Int, capGb: Float?, reserveGb: Float) {
         _status.value = _status.value.copy(
             episodeCountLimit = count,
-            capGb = capGb,
-            reserveGb = reserveGb
-        )
-        preferences.updateLimitsOnly(
-            episodeLimit = count,
             capGb = capGb,
             reserveGb = reserveGb
         )
@@ -514,10 +518,20 @@ class WatchNextRepository(
                         )
                     )
                 } catch (e: Exception) {
+                    if (e is CancellationException) throw e
                     _lastLog.value = "Ошибка обновления лимитов: ${e.localizedMessage}"
                 }
             }
         }
+    }
+
+    suspend fun updateLimits(count: Int, capGb: Float?, reserveGb: Float) {
+        preferences.updateLimitsOnly(
+            episodeLimit = count,
+            capGb = capGb,
+            reserveGb = reserveGb
+        )
+        syncLimitsToServer(count, capGb, reserveGb)
     }
 
     suspend fun searchTorrents(
@@ -555,7 +569,8 @@ class WatchNextRepository(
                         )
                     }
                 } catch (e: Exception) {
-                    _lastLog.value = "Ошибка поиска через сервер: ${e.localizedMessage}"
+                    if (e is CancellationException) throw e
+                    _lastLog.value = "Ошибка поиска через сервер: ${e.localizedMessage ?: "Не удалось выполнить поиск"}"
                     emptyList()
                 }
             }
@@ -628,6 +643,7 @@ class WatchNextRepository(
                         )
                     }
                 } catch (e: Exception) {
+                    if (e is CancellationException) throw e
                     emptyList()
                 }
             }
@@ -644,6 +660,7 @@ class WatchNextRepository(
                     refresh()
                     _lastLog.value = "Подписка оформлена: $title"
                 } catch (e: Exception) {
+                    if (e is CancellationException) throw e
                     _lastLog.value = "Ошибка создания подписки: ${e.localizedMessage}"
                 }
             }
@@ -672,6 +689,7 @@ class WatchNextRepository(
                     api.removeSubscription(id)
                     refresh()
                 } catch (e: Exception) {
+                    if (e is CancellationException) throw e
                     _lastLog.value = "Ошибка удаления подписки: ${e.localizedMessage}"
                 }
             }
@@ -690,6 +708,7 @@ class WatchNextRepository(
                     refresh()
                     _lastLog.value = "Релиз импортирован в очередь"
                 } catch (e: Exception) {
+                    if (e is CancellationException) throw e
                     _lastLog.value = "Ошибка импорта релиза: ${e.localizedMessage}"
                 }
             }

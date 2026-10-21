@@ -5,23 +5,25 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.CloudQueue
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.AppSettings
+import com.example.ui.components.SettingSliderCard
 import com.example.ui.theme.CyanPrimary
 import com.example.ui.theme.StatusGreen
 import com.example.ui.theme.StatusRose
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.text.input.KeyboardType
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
@@ -32,28 +34,48 @@ fun SettingsScreen(
     onTestConnection: suspend (AppSettings) -> Pair<Boolean, String>,
     modifier: Modifier = Modifier
 ) {
-    var serverUrl by remember(currentSettings) { mutableStateOf(currentSettings.serverUrl) }
-    var apiToken by remember(currentSettings) { mutableStateOf(currentSettings.apiToken) }
-    var isDemoMode by remember(currentSettings) { mutableStateOf(currentSettings.isDemoMode) }
+    // Preserve local user input across recompositions and background syncs
+    var isInitialized by rememberSaveable { mutableStateOf(false) }
 
-    var episodeLimit by remember(currentSettings) { mutableIntStateOf(currentSettings.episodeLimit) }
-    var hasCapGb by remember(currentSettings) { mutableStateOf(currentSettings.capGb != null) }
-    var capGb by remember(currentSettings) { mutableFloatStateOf(currentSettings.capGb ?: 50f) }
-    var reserveGb by remember(currentSettings) { mutableFloatStateOf(currentSettings.reserveGb) }
-    var pollIntervalSeconds by remember(currentSettings) { mutableIntStateOf(currentSettings.pollIntervalSeconds) }
+    var serverUrl by rememberSaveable { mutableStateOf(currentSettings.serverUrl) }
+    var apiToken by rememberSaveable { mutableStateOf(currentSettings.apiToken) }
+    var isDemoMode by rememberSaveable { mutableStateOf(currentSettings.isDemoMode) }
+
+    var episodeLimit by rememberSaveable { mutableIntStateOf(currentSettings.episodeLimit) }
+    var hasCapGb by rememberSaveable { mutableStateOf(currentSettings.capGb != null) }
+    var capGb by rememberSaveable { mutableFloatStateOf(currentSettings.capGb ?: 50f) }
+    var reserveGb by rememberSaveable { mutableFloatStateOf(currentSettings.reserveGb) }
+    var pollIntervalSeconds by rememberSaveable { mutableIntStateOf(currentSettings.pollIntervalSeconds) }
 
     var testStatusText by remember { mutableStateOf<String?>(null) }
     var isTestingConnection by remember { mutableStateOf(false) }
     var testSucceeded by remember { mutableStateOf<Boolean?>(null) }
+    var showSaveSuccess by remember { mutableStateOf(false) }
 
     val coroutineScope = rememberCoroutineScope()
 
-    val customSwitchColors = SwitchDefaults.colors(
-        checkedThumbColor = androidx.compose.ui.graphics.Color.White,
+    // Sync only on first arrival of persisted settings from DataStore
+    LaunchedEffect(currentSettings) {
+        if (!isInitialized) {
+            serverUrl = currentSettings.serverUrl
+            apiToken = currentSettings.apiToken
+            isDemoMode = currentSettings.isDemoMode
+            episodeLimit = currentSettings.episodeLimit
+            hasCapGb = currentSettings.capGb != null
+            capGb = currentSettings.capGb ?: 50f
+            reserveGb = currentSettings.reserveGb
+            pollIntervalSeconds = currentSettings.pollIntervalSeconds
+            isInitialized = true
+        }
+    }
+
+    // High contrast switch colors with visible thumb and border in both on and off states
+    val modernSwitchColors = SwitchDefaults.colors(
+        checkedThumbColor = Color.White,
         checkedTrackColor = CyanPrimary,
-        uncheckedThumbColor = androidx.compose.ui.graphics.Color(0xFFCBD5E1),
-        uncheckedTrackColor = androidx.compose.ui.graphics.Color(0xFF334155),
-        uncheckedBorderColor = androidx.compose.ui.graphics.Color(0xFF475569)
+        uncheckedThumbColor = Color(0xFFCBD5E1),
+        uncheckedTrackColor = Color(0xFF334155),
+        uncheckedBorderColor = Color(0xFF64748B)
     )
 
     Column(
@@ -77,7 +99,7 @@ fun SettingsScreen(
         ) {
             Column(
                 modifier = Modifier.padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Text(
                     text = "Лимиты очереди",
@@ -87,102 +109,75 @@ fun SettingsScreen(
                 )
 
                 // Episode limit
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        OutlinedTextField(
-                            value = episodeLimit.toString(),
-                            onValueChange = { str ->
-                                val n = str.filter { it.isDigit() }.toIntOrNull()
-                                if (n != null && n in 1..1000) episodeLimit = n
-                            },
-                            label = { Text("Серий вперед") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            singleLine = true,
-                            modifier = Modifier
-                                .weight(1f)
-                                .testTag("input_episode_limit")
-                        )
-                    }
-                    Slider(
-                        value = episodeLimit.coerceIn(1, 30).toFloat(),
-                        onValueChange = { episodeLimit = it.toInt() },
-                        valueRange = 1f..30f,
-                        modifier = Modifier.testTag("slider_episode_limit")
-                    )
-                }
+                SettingSliderCard(
+                    title = "Серий вперед",
+                    subtitle = "Количество серий для одновременного скачивания",
+                    value = episodeLimit.toFloat(),
+                    valueRange = 1f..30f,
+                    step = 1f,
+                    unitLabel = "серий",
+                    presets = listOf("3" to 3f, "5" to 5f, "10" to 10f, "15" to 15f, "20" to 20f),
+                    onValueChange = { episodeLimit = it.toInt() },
+                    testTagInput = "input_episode_limit",
+                    testTagSlider = "slider_episode_limit"
+                )
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
 
                 // Reserve GB
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        OutlinedTextField(
-                            value = reserveGb.toInt().toString(),
-                            onValueChange = { str ->
-                                val n = str.filter { it.isDigit() }.toFloatOrNull()
-                                if (n != null && n >= 0f) reserveGb = n
-                            },
-                            label = { Text("Резерв места на диске (ГБ)") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            singleLine = true,
-                            modifier = Modifier
-                                .weight(1f)
-                                .testTag("input_reserve_gb")
-                        )
-                    }
-                    Slider(
-                        value = reserveGb.coerceIn(1f, 100f),
-                        onValueChange = { reserveGb = it },
-                        valueRange = 1f..100f,
-                        modifier = Modifier.testTag("slider_reserve_gb")
-                    )
-                }
+                SettingSliderCard(
+                    title = "Резерв места на диске",
+                    subtitle = "Минимальный свободный объём на диске",
+                    value = reserveGb,
+                    valueRange = 0f..100f,
+                    step = 1f,
+                    unitLabel = "ГБ",
+                    presets = listOf("2 ГБ" to 2f, "5 ГБ" to 5f, "10 ГБ" to 10f, "20 ГБ" to 20f, "50 ГБ" to 50f),
+                    onValueChange = { reserveGb = it },
+                    testTagInput = "input_reserve_gb",
+                    testTagSlider = "slider_reserve_gb"
+                )
 
-                // Cap GB
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+
+                // Cap GB Toggle & Slider
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        if (hasCapGb) "Лимит объёма (ГБ)" else "Лимит объёма: без ограничений",
-                        fontSize = 13.sp
-                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = if (hasCapGb) "Лимит объёма хранилища" else "Лимит объёма: без ограничений",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = if (hasCapGb) "Останавливать скачивание при превышении" else "Скачивать без ограничения по общему весу",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     Switch(
                         checked = hasCapGb,
                         onCheckedChange = { hasCapGb = it },
-                        colors = customSwitchColors,
+                        colors = modernSwitchColors,
                         modifier = Modifier.testTag("switch_cap_gb")
                     )
                 }
 
                 if (hasCapGb) {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        OutlinedTextField(
-                            value = capGb.toInt().toString(),
-                            onValueChange = { str ->
-                                val n = str.filter { it.isDigit() }.toFloatOrNull()
-                                if (n != null && n > 0f) capGb = n
-                            },
-                            label = { Text("Максимальный объём (ГБ)") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            singleLine = true,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("input_cap_gb")
-                        )
-                        Slider(
-                            value = capGb.coerceIn(10f, 500f),
-                            onValueChange = { capGb = it },
-                            valueRange = 10f..500f
-                        )
-                    }
+                    SettingSliderCard(
+                        title = "Максимальный объём",
+                        value = capGb,
+                        valueRange = 10f..500f,
+                        step = 10f,
+                        unitLabel = "ГБ",
+                        presets = listOf("25 ГБ" to 25f, "50 ГБ" to 50f, "100 ГБ" to 100f, "200 ГБ" to 200f, "500 ГБ" to 500f),
+                        onValueChange = { capGb = it },
+                        testTagInput = "input_cap_gb",
+                        testTagSlider = "slider_cap_gb"
+                    )
                 }
             }
         }
@@ -231,7 +226,12 @@ fun SettingsScreen(
                         isTestingConnection = true
                         testStatusText = null
                         coroutineScope.launch {
-                            val (success, message) = onTestConnection(currentSettings.copy(serverUrl = serverUrl, apiToken = apiToken))
+                            val (success, message) = onTestConnection(
+                                currentSettings.copy(
+                                    serverUrl = serverUrl.trim(),
+                                    apiToken = apiToken.trim()
+                                )
+                            )
                             testSucceeded = success
                             testStatusText = message
                             isTestingConnection = false
@@ -270,7 +270,7 @@ fun SettingsScreen(
         ) {
             Column(
                 modifier = Modifier.padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Text(
                     text = "Автообновление очереди",
@@ -278,35 +278,17 @@ fun SettingsScreen(
                     fontWeight = FontWeight.Bold,
                     color = CyanPrimary
                 )
-                Text(
-                    text = "Период опроса сервера в фоновом режиме (1–30 сек):",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    OutlinedTextField(
-                        value = pollIntervalSeconds.toString(),
-                        onValueChange = { str ->
-                            val n = str.filter { it.isDigit() }.toIntOrNull()
-                            if (n != null && n in 1..300) pollIntervalSeconds = n
-                        },
-                        label = { Text("Интервал (сек)") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        singleLine = true,
-                        modifier = Modifier
-                            .weight(1f)
-                            .testTag("input_poll_interval")
-                    )
-                }
-                Slider(
-                    value = pollIntervalSeconds.coerceIn(1, 30).toFloat(),
-                    onValueChange = { pollIntervalSeconds = it.toInt() },
+                SettingSliderCard(
+                    title = "Период опроса сервера",
+                    subtitle = "Частота синхронизации статуса и загрузок (1–30 сек)",
+                    value = pollIntervalSeconds.toFloat(),
                     valueRange = 1f..30f,
-                    modifier = Modifier.testTag("slider_poll_interval")
+                    step = 1f,
+                    unitLabel = "сек",
+                    presets = listOf("1с" to 1f, "2с" to 2f, "3с" to 3f, "5с" to 5f, "10с" to 10f),
+                    onValueChange = { pollIntervalSeconds = it.toInt() },
+                    testTagInput = "input_poll_interval",
+                    testTagSlider = "slider_poll_interval"
                 )
             }
         }
@@ -331,7 +313,7 @@ fun SettingsScreen(
                 Switch(
                     checked = isDemoMode,
                     onCheckedChange = { isDemoMode = it },
-                    colors = customSwitchColors,
+                    colors = modernSwitchColors,
                     modifier = Modifier.testTag("switch_demo_mode")
                 )
             }
@@ -341,8 +323,8 @@ fun SettingsScreen(
         Button(
             onClick = {
                 val updated = currentSettings.copy(
-                    serverUrl = serverUrl,
-                    apiToken = apiToken,
+                    serverUrl = serverUrl.trim(),
+                    apiToken = apiToken.trim(),
                     episodeLimit = episodeLimit,
                     capGb = if (hasCapGb) capGb else null,
                     reserveGb = reserveGb,
@@ -350,6 +332,11 @@ fun SettingsScreen(
                     isDemoMode = isDemoMode
                 )
                 onSaveSettings(updated)
+                showSaveSuccess = true
+                coroutineScope.launch {
+                    delay(2500)
+                    showSaveSuccess = false
+                }
             },
             modifier = Modifier
                 .fillMaxWidth()
@@ -357,9 +344,15 @@ fun SettingsScreen(
                 .testTag("btn_save_settings"),
             shape = RoundedCornerShape(10.dp)
         ) {
-            Icon(Icons.Outlined.Save, contentDescription = null, modifier = Modifier.size(18.dp))
-            Spacer(modifier = Modifier.width(6.dp))
-            Text("Сохранить", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            if (showSaveSuccess) {
+                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Настройки сохранены!", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            } else {
+                Icon(Icons.Outlined.Save, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Сохранить", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            }
         }
 
         Spacer(modifier = Modifier.height(60.dp))

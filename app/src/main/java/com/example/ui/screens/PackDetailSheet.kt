@@ -72,13 +72,47 @@ fun PackDetailSheet(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Text(
-                        text = "${pack.kind.label} · Сезон ${pack.season}, старт с ${pack.startEpisode} серии · ${pack.totalSizeFormatted}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant
+                        ) {
+                            Text(
+                                text = pack.kind.label,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                        if (pack.kind == PackKind.SERIES) {
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant
+                            ) {
+                                Text(
+                                    text = "Сезон ${pack.season} · с ${pack.startEpisode} серии",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant
+                        ) {
+                            Text(
+                                text = pack.totalSizeFormatted,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Row(
@@ -103,57 +137,82 @@ fun PackDetailSheet(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Action Buttons: short, clean labels that never wrap
-            Row(
+            // Action Buttons: two well-spaced rows so labels never get cut off
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 if (pack.kind == PackKind.SERIES) {
-                    FilledTonalButton(
-                        onClick = { showChangeFromDialog = true },
-                        modifier = Modifier
-                            .weight(1f)
-                            .testTag("action_change_from"),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
-                        shape = RoundedCornerShape(8.dp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(Icons.Default.Tune, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Сменить старт", fontSize = 12.sp, maxLines = 1)
-                    }
+                        FilledTonalButton(
+                            onClick = { showChangeFromDialog = true },
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("action_change_from"),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Icon(Icons.Default.Tune, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Сменить старт", fontSize = 12.sp, maxLines = 1)
+                        }
 
+                        OutlinedButton(
+                            onClick = onFinishNextSeason,
+                            enabled = !pack.noNextSeason,
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("action_finish_season"),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(if (pack.noNextSeason) "Завершён" else "Завершить", fontSize = 12.sp, maxLines = 1)
+                        }
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     OutlinedButton(
-                        onClick = onFinishNextSeason,
-                        enabled = !pack.noNextSeason,
+                        onClick = { showRecheckConfirmDialog = true },
                         modifier = Modifier
                             .weight(1f)
-                            .testTag("action_finish_season"),
+                            .testTag("action_retry_pack"),
                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
-                        shape = RoundedCornerShape(8.dp)
+                        shape = RoundedCornerShape(10.dp)
                     ) {
-                        Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(if (pack.noNextSeason) "Завершён" else "Завершить", fontSize = 12.sp, maxLines = 1)
+                        Icon(
+                            Icons.AutoMirrored.Outlined.FactCheck,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Проверка хеша", fontSize = 12.sp, maxLines = 1)
                     }
-                }
 
-                FilledTonalIconButton(
-                    onClick = { showRecheckConfirmDialog = true },
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.testTag("action_retry_pack")
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Outlined.FactCheck,
-                        contentDescription = "Перепроверить целостность файлов (recheck)"
-                    )
-                }
-
-                IconButton(
-                    onClick = { showDeleteConfirmDialog = true },
-                    modifier = Modifier.testTag("action_delete_pack")
-                ) {
-                    Icon(Icons.Outlined.Delete, contentDescription = "Удалить", tint = StatusRose)
+                    Button(
+                        onClick = { showDeleteConfirmDialog = true },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = StatusRose.copy(alpha = 0.15f),
+                            contentColor = StatusRose
+                        ),
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("action_delete_pack"),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Icon(Icons.Outlined.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Удалить", fontSize = 12.sp, maxLines = 1)
+                    }
                 }
             }
 
@@ -427,17 +486,22 @@ fun CompactEpisodeRow(
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 EpisodeStatusBadge(status = episode.status)
-                if (onDelete != null) {
-                    IconButton(
-                        onClick = onDelete,
-                        modifier = Modifier.size(28.dp)
-                    ) {
-                        Icon(
-                            Icons.Outlined.Delete,
-                            contentDescription = "Удалить серию",
-                            tint = StatusRose,
-                            modifier = Modifier.size(16.dp)
-                        )
+                Box(
+                    modifier = Modifier.size(28.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (onDelete != null) {
+                        IconButton(
+                            onClick = onDelete,
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(
+                                Icons.Outlined.Delete,
+                                contentDescription = "Удалить серию",
+                                tint = StatusRose,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
                     }
                 }
             }

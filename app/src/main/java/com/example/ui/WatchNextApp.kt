@@ -185,7 +185,7 @@ fun WatchNextApp(
                         onSaveSettings = { updated ->
                             onSaveSettings(updated)
                             coroutineScope.launch {
-                                repository.updateLimits(updated.episodeLimit, updated.capGb, updated.reserveGb)
+                                repository.syncLimitsToServer(updated.episodeLimit, updated.capGb, updated.reserveGb)
                             }
                         },
                         onTestConnection = { settings ->
