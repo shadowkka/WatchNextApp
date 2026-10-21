@@ -43,4 +43,25 @@ class ExampleRobolectricTest {
         assertEquals(2, season)
         assertNotNull(voices.find { it == "LostFilm" })
     }
+
+    @Test
+    fun `app settings default poll interval is 3 seconds`() {
+        val settings = com.example.data.AppSettings()
+        assertEquals(3, settings.pollIntervalSeconds)
+        assertEquals("http://192.168.2.11:8000", settings.serverUrl)
+    }
+
+    @Test
+    fun `show search result model holds tvmaze show info`() {
+        val show = com.example.model.ShowSearchResult(
+            id = 44458,
+            name = "Severance",
+            premiered = "2022-02-18",
+            status = "Running",
+            language = "English"
+        )
+        assertEquals(44458, show.id)
+        assertEquals("Severance", show.name)
+        assertEquals("2022-02-18", show.premiered)
+    }
 }

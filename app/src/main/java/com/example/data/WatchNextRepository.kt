@@ -5,9 +5,11 @@ import com.example.model.*
 import com.example.util.TorrentParser
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.UUID
@@ -41,13 +43,28 @@ class WatchNextRepository(
                 currentSettings = settings
                 updateApiService()
                 if (!settings.isDemoMode) {
-                    refresh()
+                    refresh(showIndicator = true)
                 } else {
                     _status.value = _status.value.copy(
                         episodeCountLimit = settings.episodeLimit,
                         capGb = settings.capGb,
                         reserveGb = settings.reserveGb
                     )
+                }
+            }
+        }
+        // Periodic background polling based on user-configured interval
+        scope.launch {
+            while (isActive) {
+                val interval = currentSettings.pollIntervalSeconds
+                val delayMs = (if (interval > 0) interval else 3) * 1000L
+                delay(delayMs)
+                if (!currentSettings.isDemoMode && interval > 0 && apiService != null) {
+                    try {
+                        refresh(showIndicator = false)
+                    } catch (_: Exception) {
+                        // Background polling errors shouldn't disrupt UI
+                    }
                 }
             }
         }
@@ -174,8 +191,8 @@ class WatchNextRepository(
         )
     }
 
-    suspend fun refresh() {
-        _isRefreshing.value = true
+    suspend fun refresh(showIndicator: Boolean = true) {
+        if (showIndicator) _isRefreshing.value = true
         withContext(Dispatchers.IO) {
             val api = apiService
             if (!currentSettings.isDemoMode && api != null) {
@@ -244,16 +261,24 @@ class WatchNextRepository(
                         )
                     }
 
-                    _lastLog.value = "Синхронизировано с сервером WatchNext"
+                    if (showIndicator) {
+                        _lastLog.value = "Синхронизировано с сервером WatchNext"
+                    }
                 } catch (e: Exception) {
-                    _lastLog.value = "Ошибка связи с сервером: ${e.localizedMessage ?: "Недоступен"}"
+                    if (showIndicator) {
+                        _lastLog.value = "Ошибка связи с сервером: ${e.localizedMessage ?: "Недоступен"}"
+                    }
                 } finally {
-                    _isRefreshing.value = false
+                    if (showIndicator) {
+                        _isRefreshing.value = false
+                    }
                 }
             } else {
-                kotlinx.coroutines.delay(300)
-                _isRefreshing.value = false
-                _lastLog.value = "Локальные данные очереди обновлены"
+                if (showIndicator) {
+                    kotlinx.coroutines.delay(300)
+                    _isRefreshing.value = false
+                    _lastLog.value = "Локальные данные очереди обновлены"
+                }
             }
         }
     }
@@ -587,12 +612,35 @@ class WatchNextRepository(
         }
     }
 
-    suspend fun addSubscription(title: String, quality: String, voice: String) {
+    suspend fun searchShows(query: String): List<ShowSearchResult> {
+        val api = apiService
+        if (!currentSettings.isDemoMode && api != null) {
+            return withContext(Dispatchers.IO) {
+                try {
+                    val apiResults = api.searchShows(query)
+                    apiResults.map { r ->
+                        ShowSearchResult(
+                            id = r.id,
+                            name = r.name,
+                            premiered = r.premiered ?: "",
+                            status = r.status ?: "",
+                            language = r.language ?: ""
+                        )
+                    }
+                } catch (e: Exception) {
+                    emptyList()
+                }
+            }
+        }
+        return emptyList()
+    }
+
+    suspend fun addSubscription(title: String, quality: String, voice: String, tvmazeId: Int? = null) {
         val api = apiService
         if (!currentSettings.isDemoMode && api != null) {
             withContext(Dispatchers.IO) {
                 try {
-                    api.addSubscription(ApiAddSubscriptionRequest(title, quality, voice))
+                    api.addSubscription(ApiAddSubscriptionRequest(title, quality, voice, tvmazeId))
                     refresh()
                     _lastLog.value = "Подписка оформлена: $title"
                 } catch (e: Exception) {

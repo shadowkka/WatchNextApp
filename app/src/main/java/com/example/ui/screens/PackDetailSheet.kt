@@ -5,6 +5,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.FactCheck
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Refresh
@@ -37,10 +38,12 @@ fun PackDetailSheet(
     onFinishNextSeason: () -> Unit,
     onRetry: () -> Unit,
     onDelete: () -> Unit,
-    onDeleteEpisode: (Int) -> Unit = {}
+    onDeleteEpisode: (Int) -> Unit = {},
+    onRefresh: () -> Unit = {}
 ) {
     var showChangeFromDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    var showRecheckConfirmDialog by remember { mutableStateOf(false) }
     var episodeToDelete by remember { mutableStateOf<EpisodeItem?>(null) }
 
     ModalBottomSheet(
@@ -78,7 +81,24 @@ fun PackDetailSheet(
                     )
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                StatusBadge(state = pack.state)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    StatusBadge(state = pack.state)
+                    IconButton(
+                        onClick = onRefresh,
+                        modifier = Modifier
+                            .size(32.dp)
+                            .testTag("action_refresh_pack")
+                    ) {
+                        Icon(
+                            Icons.Outlined.Refresh,
+                            contentDescription = "Обновить статус",
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(14.dp))
@@ -119,11 +139,14 @@ fun PackDetailSheet(
                 }
 
                 FilledTonalIconButton(
-                    onClick = onRetry,
+                    onClick = { showRecheckConfirmDialog = true },
                     shape = RoundedCornerShape(8.dp),
                     modifier = Modifier.testTag("action_retry_pack")
                 ) {
-                    Icon(Icons.Outlined.Refresh, contentDescription = "Перепроверить целостность файлов (recheck в qBittorrent)")
+                    Icon(
+                        Icons.AutoMirrored.Outlined.FactCheck,
+                        contentDescription = "Перепроверить целостность файлов (recheck)"
+                    )
                 }
 
                 IconButton(
@@ -318,6 +341,34 @@ fun PackDetailSheet(
             },
             dismissButton = {
                 TextButton(onClick = { episodeToDelete = null }) {
+                    Text("Отмена")
+                }
+            }
+        )
+    }
+
+    if (showRecheckConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showRecheckConfirmDialog = false },
+            title = { Text("Перепроверить файлы?") },
+            text = {
+                Text(
+                    "Запускает перепроверку хеша файлов (recheck) в qBittorrent.\n\n" +
+                    "Это нужно, если файлы были повреждены или не сходятся контрольные суммы."
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onRetry()
+                        showRecheckConfirmDialog = false
+                    }
+                ) {
+                    Text("Начать проверку")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRecheckConfirmDialog = false }) {
                     Text("Отмена")
                 }
             }

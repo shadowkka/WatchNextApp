@@ -65,15 +65,32 @@ fun WatchNextApp(
         bottomBar = {
             NavigationBar(
                 containerColor = MaterialTheme.colorScheme.surface,
+                windowInsets = WindowInsets(0, 0, 0, 0),
                 modifier = Modifier.testTag("bottom_nav_bar")
             ) {
+                val navColors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = com.example.ui.theme.CyanPrimary,
+                    selectedTextColor = com.example.ui.theme.CyanPrimary,
+                    indicatorColor = com.example.ui.theme.CyanPrimary.copy(alpha = 0.16f),
+                    unselectedIconColor = com.example.ui.theme.TextGray,
+                    unselectedTextColor = com.example.ui.theme.TextGray
+                )
                 ScreenTab.values().forEach { tab ->
                     NavigationBarItem(
                         selected = currentTab == tab,
                         onClick = { currentTab = tab },
                         icon = { Icon(tab.icon, contentDescription = tab.title) },
-                        label = { Text(tab.title, fontSize = 11.sp, maxLines = 1) },
+                        label = {
+                            Text(
+                                text = tab.title,
+                                fontSize = 10.sp,
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                            )
+                        },
                         alwaysShowLabel = true,
+                        colors = navColors,
                         modifier = Modifier.testTag("nav_item_${tab.name.lowercase()}")
                     )
                 }
@@ -140,9 +157,9 @@ fun WatchNextApp(
                 ScreenTab.SUBSCRIPTIONS -> {
                     SubscriptionsScreen(
                         subscriptions = subscriptions,
-                        onAddSubscription = { title, quality, voice ->
+                        onAddSubscription = { title, quality, voice, tvmazeId ->
                             coroutineScope.launch {
-                                repository.addSubscription(title, quality, voice)
+                                repository.addSubscription(title, quality, voice, tvmazeId)
                             }
                         },
                         onRemoveSubscription = { id ->
@@ -155,6 +172,9 @@ fun WatchNextApp(
                                 repository.importSubscriptionRelease(id)
                                 currentTab = ScreenTab.DASHBOARD
                             }
+                        },
+                        onSearchShows = { query ->
+                            repository.searchShows(query)
                         }
                     )
                 }
@@ -180,6 +200,9 @@ fun WatchNextApp(
                 PackDetailSheet(
                     pack = pack,
                     onDismiss = { selectedPackForDetail = null },
+                    onRefresh = {
+                        coroutineScope.launch { repository.refresh() }
+                    },
                     onChangeFrom = { season, episode ->
                         coroutineScope.launch {
                             repository.changeFrom(pack.hash, season, episode)

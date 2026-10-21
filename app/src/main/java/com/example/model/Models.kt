@@ -125,6 +125,14 @@ data class SubscriptionItem(
     val candidateReleaseMagnet: String? = null
 )
 
+data class ShowSearchResult(
+    val id: Int,
+    val name: String,
+    val premiered: String = "",
+    val status: String = "",
+    val language: String = ""
+)
+
 fun formatBytes(bytes: Long): String {
     if (bytes <= 0) return "0 Б"
     val units = arrayOf("Б", "КБ", "МБ", "ГБ", "ТБ")

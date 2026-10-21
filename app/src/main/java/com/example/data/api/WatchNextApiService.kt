@@ -78,6 +78,9 @@ interface WatchNextApiService {
     @POST("api/subscriptions/{sub_id}/import")
     suspend fun importSubscriptionRelease(@Path("sub_id") id: String): Map<String, Any>
 
+    @GET("api/shows/search")
+    suspend fun searchShows(@Query("query") query: String): List<ApiShowSearchResult>
+
     companion object {
         fun create(baseUrl: String, apiToken: String = ""): WatchNextApiService {
             val normalizedUrl = if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/"
@@ -93,9 +96,9 @@ interface WatchNextApiService {
 
             val okHttpClient = OkHttpClient.Builder()
                 .addInterceptor(authInterceptor)
-                .connectTimeout(5, TimeUnit.SECONDS)
-                .readTimeout(15, TimeUnit.SECONDS)
-                .writeTimeout(15, TimeUnit.SECONDS)
+                .connectTimeout(8, TimeUnit.SECONDS)
+                .readTimeout(35, TimeUnit.SECONDS)
+                .writeTimeout(35, TimeUnit.SECONDS)
                 .build()
 
             val moshi = Moshi.Builder()

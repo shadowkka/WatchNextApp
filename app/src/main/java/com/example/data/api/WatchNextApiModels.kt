@@ -112,5 +112,15 @@ data class ApiSubscriptionItem(
 data class ApiAddSubscriptionRequest(
     @Json(name = "title") val title: String,
     @Json(name = "preferredQuality") val preferredQuality: String = "1080p",
-    @Json(name = "preferredVoice") val preferredVoice: String = "Любая"
+    @Json(name = "preferredVoice") val preferredVoice: String = "Любая",
+    @Json(name = "tvmazeId") val tvmazeId: Int? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class ApiShowSearchResult(
+    @Json(name = "id") val id: Int,
+    @Json(name = "name") val name: String,
+    @Json(name = "premiered") val premiered: String? = null,
+    @Json(name = "status") val status: String? = null,
+    @Json(name = "language") val language: String? = null
 )

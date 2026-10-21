@@ -40,12 +40,21 @@ fun SettingsScreen(
     var hasCapGb by remember(currentSettings) { mutableStateOf(currentSettings.capGb != null) }
     var capGb by remember(currentSettings) { mutableFloatStateOf(currentSettings.capGb ?: 50f) }
     var reserveGb by remember(currentSettings) { mutableFloatStateOf(currentSettings.reserveGb) }
+    var pollIntervalSeconds by remember(currentSettings) { mutableIntStateOf(currentSettings.pollIntervalSeconds) }
 
     var testStatusText by remember { mutableStateOf<String?>(null) }
     var isTestingConnection by remember { mutableStateOf(false) }
     var testSucceeded by remember { mutableStateOf<Boolean?>(null) }
 
     val coroutineScope = rememberCoroutineScope()
+
+    val customSwitchColors = SwitchDefaults.colors(
+        checkedThumbColor = androidx.compose.ui.graphics.Color.White,
+        checkedTrackColor = CyanPrimary,
+        uncheckedThumbColor = androidx.compose.ui.graphics.Color(0xFFCBD5E1),
+        uncheckedTrackColor = androidx.compose.ui.graphics.Color(0xFF334155),
+        uncheckedBorderColor = androidx.compose.ui.graphics.Color(0xFF475569)
+    )
 
     Column(
         modifier = modifier
@@ -148,6 +157,7 @@ fun SettingsScreen(
                     Switch(
                         checked = hasCapGb,
                         onCheckedChange = { hasCapGb = it },
+                        colors = customSwitchColors,
                         modifier = Modifier.testTag("switch_cap_gb")
                     )
                 }
@@ -252,6 +262,55 @@ fun SettingsScreen(
             }
         }
 
+        // Background Polling Interval
+        Card(
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = CardDefaults.outlinedCardBorder()
+        ) {
+            Column(
+                modifier = Modifier.padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "Автообновление очереди",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = CyanPrimary
+                )
+                Text(
+                    text = "Период опроса сервера в фоновом режиме (1–30 сек):",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = pollIntervalSeconds.toString(),
+                        onValueChange = { str ->
+                            val n = str.filter { it.isDigit() }.toIntOrNull()
+                            if (n != null && n in 1..300) pollIntervalSeconds = n
+                        },
+                        label = { Text("Интервал (сек)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("input_poll_interval")
+                    )
+                }
+                Slider(
+                    value = pollIntervalSeconds.coerceIn(1, 30).toFloat(),
+                    onValueChange = { pollIntervalSeconds = it.toInt() },
+                    valueRange = 1f..30f,
+                    modifier = Modifier.testTag("slider_poll_interval")
+                )
+            }
+        }
+
         // Demo Mode Toggle
         Card(
             shape = RoundedCornerShape(12.dp),
@@ -272,6 +331,7 @@ fun SettingsScreen(
                 Switch(
                     checked = isDemoMode,
                     onCheckedChange = { isDemoMode = it },
+                    colors = customSwitchColors,
                     modifier = Modifier.testTag("switch_demo_mode")
                 )
             }
@@ -286,6 +346,7 @@ fun SettingsScreen(
                     episodeLimit = episodeLimit,
                     capGb = if (hasCapGb) capGb else null,
                     reserveGb = reserveGb,
+                    pollIntervalSeconds = pollIntervalSeconds,
                     isDemoMode = isDemoMode
                 )
                 onSaveSettings(updated)

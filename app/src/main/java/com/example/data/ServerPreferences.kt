@@ -27,7 +27,8 @@ data class AppSettings(
     val episodeLimit: Int = 5,
     val capGb: Float? = null,
     val reserveGb: Float = 5f,
-    val isDemoMode: Boolean = false
+    val isDemoMode: Boolean = false,
+    val pollIntervalSeconds: Int = 3
 )
 
 class ServerPreferences(private val context: Context) {
@@ -46,6 +47,7 @@ class ServerPreferences(private val context: Context) {
         val KEY_CAP_GB = floatPreferencesKey("cap_gb")
         val KEY_RESERVE_GB = floatPreferencesKey("reserve_gb")
         val KEY_IS_DEMO = booleanPreferencesKey("is_demo_mode")
+        val KEY_POLL_INTERVAL = intPreferencesKey("poll_interval")
     }
 
     val settingsFlow: Flow<AppSettings> = context.dataStore.data.map { prefs ->
@@ -63,7 +65,8 @@ class ServerPreferences(private val context: Context) {
             episodeLimit = prefs[KEY_EPISODE_LIMIT] ?: 5,
             capGb = if (rawCap != null && rawCap > 0f) rawCap else null,
             reserveGb = prefs[KEY_RESERVE_GB] ?: 5f,
-            isDemoMode = prefs[KEY_IS_DEMO] ?: false
+            isDemoMode = prefs[KEY_IS_DEMO] ?: false,
+            pollIntervalSeconds = prefs[KEY_POLL_INTERVAL] ?: 3
         )
     }
 
@@ -86,6 +89,7 @@ class ServerPreferences(private val context: Context) {
             }
             prefs[KEY_RESERVE_GB] = settings.reserveGb
             prefs[KEY_IS_DEMO] = settings.isDemoMode
+            prefs[KEY_POLL_INTERVAL] = settings.pollIntervalSeconds
         }
     }
 
