@@ -21,6 +21,8 @@ import androidx.compose.ui.unit.sp
 import com.example.model.PackKind
 import com.example.ui.theme.CyanPrimary
 import com.example.util.TorrentParser
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 
 @Composable
 fun AddMagnetScreen(
@@ -148,46 +150,70 @@ fun AddMagnetScreen(
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Сезон: $season", fontSize = 13.sp)
+                        OutlinedTextField(
+                            value = season.toString(),
+                            onValueChange = { str ->
+                                val n = str.filter { it.isDigit() }.toIntOrNull()
+                                if (n != null && n in 1..999) season = n
+                            },
+                            label = { Text("Сезон") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true,
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("input_start_season")
+                        )
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             FilledTonalIconButton(
                                 onClick = { if (season > 1) season-- },
                                 enabled = season > 1,
-                                modifier = Modifier.size(36.dp)
+                                modifier = Modifier.size(44.dp)
                             ) {
-                                Icon(Icons.Default.Remove, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Icon(Icons.Default.Remove, contentDescription = "Уменьшить сезон", modifier = Modifier.size(18.dp))
                             }
                             FilledTonalIconButton(
                                 onClick = { season++ },
-                                modifier = Modifier.size(36.dp)
+                                modifier = Modifier.size(44.dp)
                             ) {
-                                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Icon(Icons.Default.Add, contentDescription = "Увеличить сезон", modifier = Modifier.size(18.dp))
                             }
                         }
                     }
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Начальная серия: $startEpisode", fontSize = 13.sp)
+                        OutlinedTextField(
+                            value = startEpisode.toString(),
+                            onValueChange = { str ->
+                                val n = str.filter { it.isDigit() }.toIntOrNull()
+                                if (n != null && n in 1..9999) startEpisode = n
+                            },
+                            label = { Text("Начальная серия") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true,
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("input_start_episode")
+                        )
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             FilledTonalIconButton(
                                 onClick = { if (startEpisode > 1) startEpisode-- },
                                 enabled = startEpisode > 1,
-                                modifier = Modifier.size(36.dp)
+                                modifier = Modifier.size(44.dp)
                             ) {
-                                Icon(Icons.Default.Remove, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Icon(Icons.Default.Remove, contentDescription = "Уменьшить серию", modifier = Modifier.size(18.dp))
                             }
                             FilledTonalIconButton(
                                 onClick = { startEpisode++ },
-                                modifier = Modifier.size(36.dp)
+                                modifier = Modifier.size(44.dp)
                             ) {
-                                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Icon(Icons.Default.Add, contentDescription = "Увеличить серию", modifier = Modifier.size(18.dp))
                             }
                         }
                     }

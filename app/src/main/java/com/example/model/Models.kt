@@ -67,7 +67,8 @@ enum class EpisodeStatus(val label: String) {
     DOWNLOADING("Загрузка"),
     WAITING_LIMIT("В очереди"),
     PLAYED("Просмотрено"),
-    SKIPPED("Пропущено")
+    SKIPPED("Пропущено"),
+    REMOVED("Удалено")
 }
 
 data class EpisodeItem(

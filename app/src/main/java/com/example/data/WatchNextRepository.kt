@@ -435,14 +435,46 @@ class WatchNextRepository(
         _lastLog.value = "Раздача удалена"
     }
 
+    suspend fun deleteEpisode(hash: String, episodeIndex: Int): Result<String> {
+        val api = apiService
+        if (!currentSettings.isDemoMode && api != null) {
+            return withContext(Dispatchers.IO) {
+                try {
+                    api.deleteEpisode(hash, episodeIndex)
+                    refresh()
+                    Result.success("Серия удалена")
+                } catch (e: Exception) {
+                    val msg = e.localizedMessage ?: "Ошибка удаления серии"
+                    _lastLog.value = "Ошибка удаления серии: $msg"
+                    Result.failure(e)
+                }
+            }
+        }
+
+        _packs.value = _packs.value.map { pack ->
+            if (pack.hash == hash) {
+                val updated = pack.episodes.map { ep ->
+                    if (ep.index == episodeIndex) {
+                        ep.copy(status = EpisodeStatus.REMOVED, isPublished = false)
+                    } else ep
+                }
+                pack.copy(episodes = updated)
+            } else pack
+        }
+        _lastLog.value = "Серия удалена"
+        return Result.success("Серия удалена")
+    }
+
     suspend fun updateLimits(count: Int, capGb: Float?, reserveGb: Float) {
         _status.value = _status.value.copy(
             episodeCountLimit = count,
             capGb = capGb,
             reserveGb = reserveGb
         )
-        preferences.updateSettings(
-            currentSettings.copy(episodeLimit = count, capGb = capGb, reserveGb = reserveGb)
+        preferences.updateLimitsOnly(
+            episodeLimit = count,
+            capGb = capGb,
+            reserveGb = reserveGb
         )
 
         val api = apiService
@@ -665,6 +697,7 @@ class WatchNextRepository(
             "WAITING_LIMIT" -> EpisodeStatus.WAITING_LIMIT
             "PLAYED" -> EpisodeStatus.PLAYED
             "SKIPPED" -> EpisodeStatus.SKIPPED
+            "REMOVED" -> EpisodeStatus.REMOVED
             else -> EpisodeStatus.WAITING_LIMIT
         }
     }

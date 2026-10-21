@@ -51,6 +51,12 @@ interface WatchNextApiService {
     @DELETE("api/packs/{pack_hash}")
     suspend fun deletePack(@Path("pack_hash") hash: String): Map<String, Any>
 
+    @DELETE("api/packs/{pack_hash}/episodes/{episode_index}")
+    suspend fun deleteEpisode(
+        @Path("pack_hash") hash: String,
+        @Path("episode_index") episodeIndex: Int
+    ): Map<String, Any>
+
     @GET("api/search")
     suspend fun searchTorrents(
         @Query("query") query: String,

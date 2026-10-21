@@ -20,6 +20,8 @@ import com.example.data.AppSettings
 import com.example.ui.theme.CyanPrimary
 import com.example.ui.theme.StatusGreen
 import com.example.ui.theme.StatusRose
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import kotlinx.coroutines.launch
 
 @Composable
@@ -75,38 +77,60 @@ fun SettingsScreen(
                     color = CyanPrimary
                 )
 
-                // Episode limit slider
-                Column {
+                // Episode limit
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Серий вперед:", fontSize = 13.sp)
-                        Text("$episodeLimit", fontWeight = FontWeight.Bold, color = CyanPrimary)
+                        OutlinedTextField(
+                            value = episodeLimit.toString(),
+                            onValueChange = { str ->
+                                val n = str.filter { it.isDigit() }.toIntOrNull()
+                                if (n != null && n in 1..1000) episodeLimit = n
+                            },
+                            label = { Text("Серий вперед") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true,
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("input_episode_limit")
+                        )
                     }
                     Slider(
-                        value = episodeLimit.toFloat(),
+                        value = episodeLimit.coerceIn(1, 30).toFloat(),
                         onValueChange = { episodeLimit = it.toInt() },
-                        valueRange = 1f..20f,
-                        steps = 18,
+                        valueRange = 1f..30f,
                         modifier = Modifier.testTag("slider_episode_limit")
                     )
                 }
 
-                // Reserve GB slider
-                Column {
+                // Reserve GB
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Резерв места на диске:", fontSize = 13.sp)
-                        Text("${reserveGb.toInt()} ГБ", fontWeight = FontWeight.Bold, color = CyanPrimary)
+                        OutlinedTextField(
+                            value = reserveGb.toInt().toString(),
+                            onValueChange = { str ->
+                                val n = str.filter { it.isDigit() }.toFloatOrNull()
+                                if (n != null && n >= 0f) reserveGb = n
+                            },
+                            label = { Text("Резерв места на диске (ГБ)") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true,
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("input_reserve_gb")
+                        )
                     }
                     Slider(
-                        value = reserveGb,
+                        value = reserveGb.coerceIn(1f, 100f),
                         onValueChange = { reserveGb = it },
-                        valueRange = 1f..30f,
-                        steps = 28,
+                        valueRange = 1f..100f,
                         modifier = Modifier.testTag("slider_reserve_gb")
                     )
                 }
@@ -118,7 +142,7 @@ fun SettingsScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        if (hasCapGb) "Лимит объёма: ${capGb.toInt()} ГБ" else "Лимит объёма: без ограничений",
+                        if (hasCapGb) "Лимит объёма (ГБ)" else "Лимит объёма: без ограничений",
                         fontSize = 13.sp
                     )
                     Switch(
@@ -129,12 +153,26 @@ fun SettingsScreen(
                 }
 
                 if (hasCapGb) {
-                    Slider(
-                        value = capGb,
-                        onValueChange = { capGb = it },
-                        valueRange = 10f..200f,
-                        steps = 18
-                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        OutlinedTextField(
+                            value = capGb.toInt().toString(),
+                            onValueChange = { str ->
+                                val n = str.filter { it.isDigit() }.toFloatOrNull()
+                                if (n != null && n > 0f) capGb = n
+                            },
+                            label = { Text("Максимальный объём (ГБ)") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("input_cap_gb")
+                        )
+                        Slider(
+                            value = capGb.coerceIn(10f, 500f),
+                            onValueChange = { capGb = it },
+                            valueRange = 10f..500f
+                        )
+                    }
                 }
             }
         }
@@ -183,7 +221,7 @@ fun SettingsScreen(
                         isTestingConnection = true
                         testStatusText = null
                         coroutineScope.launch {
-                            val (success, message) = onTestConnection(currentSettings.copy(serverUrl = serverUrl))
+                            val (success, message) = onTestConnection(currentSettings.copy(serverUrl = serverUrl, apiToken = apiToken))
                             testSucceeded = success
                             testStatusText = message
                             isTestingConnection = false

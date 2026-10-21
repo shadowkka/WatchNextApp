@@ -15,19 +15,19 @@ import kotlinx.coroutines.flow.map
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "watchnext_settings")
 
 data class AppSettings(
-    val serverUrl: String = "http://192.168.1.100:8000",
+    val serverUrl: String = "http://192.168.2.11:8000",
     val apiToken: String = "",
-    val qbitUrl: String = "http://192.168.1.100:8080",
+    val qbitUrl: String = "http://192.168.2.11:8080",
     val qbitUsername: String = "admin",
     val qbitPassword: String = "",
-    val jackettUrl: String = "http://192.168.1.100:9117",
+    val jackettUrl: String = "http://192.168.2.11:9117",
     val jackettApiKey: String = "",
-    val jellyfinUrl: String = "http://192.168.1.100:8096",
+    val jellyfinUrl: String = "http://192.168.2.11:8096",
     val jellyfinApiKey: String = "",
     val episodeLimit: Int = 5,
     val capGb: Float? = null,
     val reserveGb: Float = 5f,
-    val isDemoMode: Boolean = true
+    val isDemoMode: Boolean = false
 )
 
 class ServerPreferences(private val context: Context) {
@@ -51,19 +51,19 @@ class ServerPreferences(private val context: Context) {
     val settingsFlow: Flow<AppSettings> = context.dataStore.data.map { prefs ->
         val rawCap = prefs[KEY_CAP_GB]
         AppSettings(
-            serverUrl = prefs[KEY_SERVER_URL] ?: "http://192.168.1.100:8000",
+            serverUrl = prefs[KEY_SERVER_URL] ?: "http://192.168.2.11:8000",
             apiToken = prefs[KEY_API_TOKEN] ?: "",
-            qbitUrl = prefs[KEY_QBIT_URL] ?: "http://192.168.1.100:8080",
+            qbitUrl = prefs[KEY_QBIT_URL] ?: "http://192.168.2.11:8080",
             qbitUsername = prefs[KEY_QBIT_USER] ?: "admin",
             qbitPassword = prefs[KEY_QBIT_PASS] ?: "",
-            jackettUrl = prefs[KEY_JACKETT_URL] ?: "http://192.168.1.100:9117",
+            jackettUrl = prefs[KEY_JACKETT_URL] ?: "http://192.168.2.11:9117",
             jackettApiKey = prefs[KEY_JACKETT_KEY] ?: "",
-            jellyfinUrl = prefs[KEY_JELLYFIN_URL] ?: "http://192.168.1.100:8096",
+            jellyfinUrl = prefs[KEY_JELLYFIN_URL] ?: "http://192.168.2.11:8096",
             jellyfinApiKey = prefs[KEY_JELLYFIN_KEY] ?: "",
             episodeLimit = prefs[KEY_EPISODE_LIMIT] ?: 5,
             capGb = if (rawCap != null && rawCap > 0f) rawCap else null,
             reserveGb = prefs[KEY_RESERVE_GB] ?: 5f,
-            isDemoMode = prefs[KEY_IS_DEMO] ?: true
+            isDemoMode = prefs[KEY_IS_DEMO] ?: false
         )
     }
 
@@ -86,6 +86,18 @@ class ServerPreferences(private val context: Context) {
             }
             prefs[KEY_RESERVE_GB] = settings.reserveGb
             prefs[KEY_IS_DEMO] = settings.isDemoMode
+        }
+    }
+
+    suspend fun updateLimitsOnly(episodeLimit: Int, capGb: Float?, reserveGb: Float) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_EPISODE_LIMIT] = episodeLimit
+            if (capGb != null) {
+                prefs[KEY_CAP_GB] = capGb
+            } else {
+                prefs.remove(KEY_CAP_GB)
+            }
+            prefs[KEY_RESERVE_GB] = reserveGb
         }
     }
 

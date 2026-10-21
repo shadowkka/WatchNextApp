@@ -18,6 +18,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import com.example.model.EpisodeItem
 import com.example.model.PackItem
 import com.example.model.PackKind
@@ -34,10 +36,12 @@ fun PackDetailSheet(
     onChangeFrom: (season: Int, episode: Int) -> Unit,
     onFinishNextSeason: () -> Unit,
     onRetry: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onDeleteEpisode: (Int) -> Unit = {}
 ) {
     var showChangeFromDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    var episodeToDelete by remember { mutableStateOf<EpisodeItem?>(null) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -119,7 +123,7 @@ fun PackDetailSheet(
                     shape = RoundedCornerShape(8.dp),
                     modifier = Modifier.testTag("action_retry_pack")
                 ) {
-                    Icon(Icons.Outlined.Refresh, contentDescription = "Проверить")
+                    Icon(Icons.Outlined.Refresh, contentDescription = "Перепроверить целостность файлов (recheck в qBittorrent)")
                 }
 
                 IconButton(
@@ -159,7 +163,12 @@ fun PackDetailSheet(
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 items(pack.episodes) { episode ->
-                    CompactEpisodeRow(episode = episode)
+                    CompactEpisodeRow(
+                        episode = episode,
+                        onDelete = if (episode.progress > 0f || episode.isPublished) {
+                            { episodeToDelete = episode }
+                        } else null
+                    )
                 }
             }
 
@@ -178,19 +187,31 @@ fun PackDetailSheet(
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Сезон: $inputSeason", fontWeight = FontWeight.SemiBold)
+                        OutlinedTextField(
+                            value = inputSeason.toString(),
+                            onValueChange = { str ->
+                                val n = str.filter { it.isDigit() }.toIntOrNull()
+                                if (n != null && n in 1..999) inputSeason = n
+                            },
+                            label = { Text("Сезон") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true,
+                            modifier = Modifier.weight(1f)
+                        )
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             FilledTonalIconButton(
                                 onClick = { if (inputSeason > 1) inputSeason-- },
-                                enabled = inputSeason > 1
+                                enabled = inputSeason > 1,
+                                modifier = Modifier.size(44.dp)
                             ) {
                                 Icon(Icons.Default.Remove, contentDescription = null)
                             }
                             FilledTonalIconButton(
-                                onClick = { inputSeason++ }
+                                onClick = { inputSeason++ },
+                                modifier = Modifier.size(44.dp)
                             ) {
                                 Icon(Icons.Default.Add, contentDescription = null)
                             }
@@ -199,19 +220,31 @@ fun PackDetailSheet(
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Серия: $inputEpisode", fontWeight = FontWeight.SemiBold)
+                        OutlinedTextField(
+                            value = inputEpisode.toString(),
+                            onValueChange = { str ->
+                                val n = str.filter { it.isDigit() }.toIntOrNull()
+                                if (n != null && n in 1..9999) inputEpisode = n
+                            },
+                            label = { Text("Серия") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true,
+                            modifier = Modifier.weight(1f)
+                        )
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             FilledTonalIconButton(
                                 onClick = { if (inputEpisode > 1) inputEpisode-- },
-                                enabled = inputEpisode > 1
+                                enabled = inputEpisode > 1,
+                                modifier = Modifier.size(44.dp)
                             ) {
                                 Icon(Icons.Default.Remove, contentDescription = null)
                             }
                             FilledTonalIconButton(
-                                onClick = { inputEpisode++ }
+                                onClick = { inputEpisode++ },
+                                modifier = Modifier.size(44.dp)
                             ) {
                                 Icon(Icons.Default.Add, contentDescription = null)
                             }
@@ -263,10 +296,40 @@ fun PackDetailSheet(
             }
         )
     }
+
+    if (episodeToDelete != null) {
+        val ep = episodeToDelete!!
+        AlertDialog(
+            onDismissRequest = { episodeToDelete = null },
+            title = { Text("Удалить серию?") },
+            text = {
+                Text("Файл серии «${ep.label}» (${ep.sizeFormatted}) будет безопасно удалён из qBittorrent и библиотеки Jellyfin.")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onDeleteEpisode(ep.index)
+                        episodeToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = StatusRose)
+                ) {
+                    Text("Удалить серию")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { episodeToDelete = null }) {
+                    Text("Отмена")
+                }
+            }
+        )
+    }
 }
 
 @Composable
-fun CompactEpisodeRow(episode: EpisodeItem) {
+fun CompactEpisodeRow(
+    episode: EpisodeItem,
+    onDelete: (() -> Unit)? = null
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
@@ -308,7 +371,25 @@ fun CompactEpisodeRow(episode: EpisodeItem) {
                 )
             }
 
-            EpisodeStatusBadge(status = episode.status)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                EpisodeStatusBadge(status = episode.status)
+                if (onDelete != null) {
+                    IconButton(
+                        onClick = onDelete,
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(
+                            Icons.Outlined.Delete,
+                            contentDescription = "Удалить серию",
+                            tint = StatusRose,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
         }
     }
 }

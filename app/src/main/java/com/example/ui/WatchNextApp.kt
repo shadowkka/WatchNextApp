@@ -203,6 +203,12 @@ fun WatchNextApp(
                             repository.deletePack(pack.hash)
                             selectedPackForDetail = null
                         }
+                    },
+                    onDeleteEpisode = { episodeIndex ->
+                        coroutineScope.launch {
+                            repository.deleteEpisode(pack.hash, episodeIndex)
+                            selectedPackForDetail = null
+                        }
                     }
                 )
             }

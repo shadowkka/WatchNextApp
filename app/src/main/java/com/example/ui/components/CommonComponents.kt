@@ -68,6 +68,7 @@ fun EpisodeStatusBadge(
         EpisodeStatus.WAITING_LIMIT -> Pair(StatusAmber, StatusAmber.copy(alpha = 0.12f))
         EpisodeStatus.PLAYED -> Pair(IndigoSecondary, IndigoSecondary.copy(alpha = 0.12f))
         EpisodeStatus.SKIPPED -> Pair(Color.Gray, Color.Gray.copy(alpha = 0.12f))
+        EpisodeStatus.REMOVED -> Pair(StatusRose, StatusRose.copy(alpha = 0.12f))
     }
 
     Box(
