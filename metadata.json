@@ -1,0 +1,6 @@
+{
+  "name": "WatchNext",
+  "description": "Клиент и панель управления медиа-очередью WatchNext, поиском торрентов и qBittorrent",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
