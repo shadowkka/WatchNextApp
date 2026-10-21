@@ -2,6 +2,7 @@ package com.example.model
 
 /**
  * Data models for WatchNext Media Queue application.
+ * All labels are streamlined to avoid awkward word breaks in UI components.
  */
 
 data class QueueStatus(
@@ -10,8 +11,8 @@ data class QueueStatus(
     val reserveGb: Float = 5f,
     val isPaused: Boolean = false,
     val diskTotalGb: Float = 512f,
-    val diskFreeGb: Float = 142.8f,
-    val diskUsedGb: Float = 369.2f,
+    val diskFreeGb: Float = 184.2f,
+    val diskUsedGb: Float = 327.8f,
     val activeDownloadsCount: Int = 2,
     val totalPacksCount: Int = 4,
     val serviceAlert: String? = null,
@@ -24,12 +25,12 @@ enum class PackKind(val label: String) {
 }
 
 enum class PackState(val label: String) {
-    METADATA("Метаданные"),
-    READY("Готов к загрузке"),
-    DOWNLOADING("Скачивается"),
-    CHECKING("Проверка (recheck)"),
-    STOPPED("Приостановлен"),
-    COMPLETE("Завершён")
+    METADATA("Инфо"),
+    READY("Готов"),
+    DOWNLOADING("Загрузка"),
+    CHECKING("Проверка"),
+    STOPPED("Пауза"),
+    COMPLETE("Скачан")
 }
 
 data class PackItem(
@@ -62,10 +63,10 @@ data class PackItem(
 }
 
 enum class EpisodeStatus(val label: String) {
-    COMPLETED("Готово к просмотру"),
-    DOWNLOADING("Скачивается"),
-    WAITING_LIMIT("Ожидает лимита"),
-    PLAYED("Просмотрено (Jellyfin)"),
+    COMPLETED("Готово"),
+    DOWNLOADING("Загрузка"),
+    WAITING_LIMIT("В очереди"),
+    PLAYED("Просмотрено"),
     SKIPPED("Пропущено")
 }
 
@@ -103,10 +104,10 @@ data class TorrentSearchResult(
 }
 
 enum class SubscriptionStatus(val label: String) {
-    ACTIVE("Активна — отслеживание"),
-    EPISODE_OUT("Серия вышла — ждём озвучку"),
-    RELEASE_FOUND("Раздача найдена"),
-    UP_TO_DATE("Все серии скачаны")
+    ACTIVE("Отслеживается"),
+    EPISODE_OUT("Ждёт озвучку"),
+    RELEASE_FOUND("Релиз найден"),
+    UP_TO_DATE("Актуально")
 }
 
 data class SubscriptionItem(

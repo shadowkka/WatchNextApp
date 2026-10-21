@@ -1,39 +1,45 @@
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Magnet U-Shape -->
+
+    <!-- Outer subtle glowing ring -->
     <path
-        android:strokeColor="#38BDF8"
-        android:strokeWidth="7"
+        android:strokeWidth="1.5"
+        android:strokeColor="#2238BDF8"
+        android:fillColor="#00000000"
+        android:pathData="M 54,26 A 28,28 0 1,1 54,82 A 28,28 0 1,1 54,26 Z" />
+
+    <!-- Left media bracket / magnet arm -->
+    <path
+        android:strokeWidth="5"
+        android:strokeColor="#6366F1"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
         android:fillColor="#00000000"
-        android:pathData="M 36,36 L 36,54 C 36,64 44,72 54,72 C 64,72 72,64 72,54 L 72,36" />
+        android:pathData="M 43,39 L 36,46 C 34,48 34,51 34,54 C 34,57 34,60 36,62 L 43,69" />
 
-    <!-- Magnet Pole Caps -->
+    <!-- Right primary Play / Forward chevron in vibrant cyan gradient -->
     <path
-        android:fillColor="#F43F5E"
-        android:pathData="M 32,30 H 40 V 38 H 32 Z" />
-    <path
-        android:fillColor="#38BDF8"
-        android:pathData="M 68,30 H 76 V 38 H 68 Z" />
+        android:pathData="M 46,38 C 47.5,37 49.5,37 51,38 L 71,51.5 C 72.5,52.5 73,53.5 73,54 C 73,54.5 72.5,55.5 71,56.5 L 51,70 C 49.5,71 47.5,71 46,70 C 44.5,69 44,67.5 44,66 L 44,42 C 44,40.5 44.5,39 46,38 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="44"
+                android:startY="38"
+                android:endX="73"
+                android:endY="70"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#38BDF8" />
+                <item android:offset="1.0" android:color="#0EA5E9" />
+            </gradient>
+        </aapt:attr>
+    </path>
 
-    <!-- Center Play/Forward Arrow -->
+    <!-- Subtle inner accent dot -->
     <path
-        android:fillColor="#818CF8"
-        android:pathData="M 48,46 L 63,54 L 48,62 Z" />
-
-    <!-- Queue Indicator Dots -->
-    <path
-        android:fillColor="#38BDF8"
-        android:pathData="M 45,80 A 2.5,2.5 0 1,1 45,80.01 Z" />
-    <path
-        android:fillColor="#818CF8"
-        android:pathData="M 54,80 A 3.2,3.2 0 1,1 54,80.01 Z" />
-    <path
-        android:fillColor="#38BDF8"
-        android:pathData="M 63,80 A 2.5,2.5 0 1,1 63,80.01 Z" />
+        android:fillColor="#FFFFFF"
+        android:pathData="M 54,54 A 3,3 0 1,1 54,54.01 Z" />
 </vector>

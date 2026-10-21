@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.AppSettings
 import com.example.data.WatchNextRepository
@@ -71,7 +72,8 @@ fun WatchNextApp(
                         selected = currentTab == tab,
                         onClick = { currentTab = tab },
                         icon = { Icon(tab.icon, contentDescription = tab.title) },
-                        label = { Text(tab.title) },
+                        label = { Text(tab.title, fontSize = 11.sp, maxLines = 1) },
+                        alwaysShowLabel = true,
                         modifier = Modifier.testTag("nav_item_${tab.name.lowercase()}")
                     )
                 }

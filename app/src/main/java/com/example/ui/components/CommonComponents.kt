@@ -3,18 +3,16 @@ package com.example.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.model.EpisodeStatus
@@ -26,29 +24,35 @@ fun StatusBadge(
     state: PackState,
     modifier: Modifier = Modifier
 ) {
-    val (bgColor, textColor, icon) = when (state) {
-        PackState.DOWNLOADING -> Triple(StatusBlue.copy(alpha = 0.15f), StatusBlue, Icons.Default.Download)
-        PackState.READY -> Triple(StatusGreen.copy(alpha = 0.15f), StatusGreen, Icons.Default.CheckCircle)
-        PackState.CHECKING -> Triple(StatusAmber.copy(alpha = 0.15f), StatusAmber, Icons.Default.Sync)
-        PackState.STOPPED -> Triple(StatusAmber.copy(alpha = 0.15f), StatusAmber, Icons.Default.Pause)
-        PackState.METADATA -> Triple(CyanPrimary.copy(alpha = 0.15f), CyanPrimary, Icons.Default.Info)
-        PackState.COMPLETE -> Triple(StatusGreen.copy(alpha = 0.2f), StatusGreen, Icons.Default.DoneAll)
+    val (dotColor, textColor, bgColor) = when (state) {
+        PackState.DOWNLOADING -> Triple(CyanPrimary, CyanPrimary, CyanPrimary.copy(alpha = 0.12f))
+        PackState.READY -> Triple(StatusGreen, StatusGreen, StatusGreen.copy(alpha = 0.12f))
+        PackState.CHECKING -> Triple(StatusAmber, StatusAmber, StatusAmber.copy(alpha = 0.12f))
+        PackState.STOPPED -> Triple(StatusAmber, StatusAmber, StatusAmber.copy(alpha = 0.12f))
+        PackState.METADATA -> Triple(IndigoSecondary, IndigoSecondary, IndigoSecondary.copy(alpha = 0.12f))
+        PackState.COMPLETE -> Triple(StatusGreen, StatusGreen, StatusGreen.copy(alpha = 0.15f))
     }
 
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(6.dp))
             .background(bgColor)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
+            .padding(horizontal = 8.dp, vertical = 3.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+        horizontalArrangement = Arrangement.spacedBy(5.dp)
     ) {
-        Icon(icon, contentDescription = null, tint = textColor, modifier = Modifier.size(14.dp))
+        Box(
+            modifier = Modifier
+                .size(6.dp)
+                .clip(CircleShape)
+                .background(dotColor)
+        )
         Text(
             text = state.label,
             color = textColor,
             fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1
         )
     }
 }
@@ -58,12 +62,12 @@ fun EpisodeStatusBadge(
     status: EpisodeStatus,
     modifier: Modifier = Modifier
 ) {
-    val (bgColor, textColor) = when (status) {
-        EpisodeStatus.COMPLETED -> Pair(StatusGreen.copy(alpha = 0.15f), StatusGreen)
-        EpisodeStatus.DOWNLOADING -> Pair(StatusBlue.copy(alpha = 0.15f), StatusBlue)
-        EpisodeStatus.WAITING_LIMIT -> Pair(StatusAmber.copy(alpha = 0.15f), StatusAmber)
-        EpisodeStatus.PLAYED -> Pair(IndigoSecondary.copy(alpha = 0.15f), IndigoSecondary)
-        EpisodeStatus.SKIPPED -> Pair(Color.Gray.copy(alpha = 0.15f), Color.Gray)
+    val (textColor, bgColor) = when (status) {
+        EpisodeStatus.COMPLETED -> Pair(StatusGreen, StatusGreen.copy(alpha = 0.12f))
+        EpisodeStatus.DOWNLOADING -> Pair(CyanPrimary, CyanPrimary.copy(alpha = 0.12f))
+        EpisodeStatus.WAITING_LIMIT -> Pair(StatusAmber, StatusAmber.copy(alpha = 0.12f))
+        EpisodeStatus.PLAYED -> Pair(IndigoSecondary, IndigoSecondary.copy(alpha = 0.12f))
+        EpisodeStatus.SKIPPED -> Pair(Color.Gray, Color.Gray.copy(alpha = 0.12f))
     }
 
     Box(
@@ -76,7 +80,8 @@ fun EpisodeStatusBadge(
             text = status.label,
             color = textColor,
             fontSize = 10.sp,
-            fontWeight = FontWeight.Medium
+            fontWeight = FontWeight.Medium,
+            maxLines = 1
         )
     }
 }
@@ -90,14 +95,15 @@ fun TrackerBadge(
         modifier = modifier
             .clip(RoundedCornerShape(4.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+            .border(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
             .padding(horizontal = 6.dp, vertical = 2.dp)
     ) {
         Text(
             text = tracker,
             color = CyanPrimary,
             fontSize = 11.sp,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            maxLines = 1
         )
     }
 }
@@ -110,14 +116,15 @@ fun QualityChip(
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(4.dp))
-            .background(IndigoSecondary.copy(alpha = 0.15f))
+            .background(IndigoSecondary.copy(alpha = 0.12f))
             .padding(horizontal = 6.dp, vertical = 2.dp)
     ) {
         Text(
             text = quality,
             color = IndigoSecondary,
             fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1
         )
     }
 }
@@ -137,60 +144,9 @@ fun VoiceChip(
             text = voice,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 10.sp,
-            fontWeight = FontWeight.Normal
+            fontWeight = FontWeight.Normal,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
-    }
-}
-
-@Composable
-fun MetricCard(
-    title: String,
-    value: String,
-    subtitle: String,
-    icon: ImageVector,
-    iconTint: Color = CyanPrimary,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier.testTag("metric_card_${title.lowercase()}"),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        shape = RoundedCornerShape(12.dp),
-        border = CardDefaults.outlinedCardBorder()
-    ) {
-        Column(
-            modifier = Modifier.padding(14.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = iconTint,
-                    modifier = Modifier.size(18.dp)
-                )
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
     }
 }

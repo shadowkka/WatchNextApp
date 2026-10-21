@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.ContentPaste
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,9 +36,7 @@ fun AddMagnetScreen(
     var season by remember { mutableIntStateOf(1) }
     var startEpisode by remember { mutableIntStateOf(1) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    var isSubmitting by remember { mutableStateOf(false) }
 
-    // Parse whenever magnet link changes
     LaunchedEffect(magnetUri) {
         if (magnetUri.isNotBlank()) {
             val extractedName = TorrentParser.extractDisplayName(magnetUri)
@@ -55,18 +54,12 @@ fun AddMagnetScreen(
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Text(
-            text = "Добавить магнет-ссылку",
+            text = "Добавить ссылку",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold
-        )
-
-        Text(
-            text = "Вставь ссылку формата magnet:?xt=urn:btih:... WatchNext автоматически остановит сидирование после загрузки и создаст hardlink для Jellyfin.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
         // Magnet Link Input
@@ -76,7 +69,7 @@ fun AddMagnetScreen(
                 magnetUri = it
                 errorMessage = null
             },
-            label = { Text("Magnet URI") },
+            label = { Text("Ссылка magnet") },
             placeholder = { Text("magnet:?xt=urn:btih:...") },
             trailingIcon = {
                 IconButton(
@@ -92,11 +85,11 @@ fun AddMagnetScreen(
                     },
                     modifier = Modifier.testTag("btn_paste_clipboard")
                 ) {
-                    Icon(Icons.Default.ContentPaste, contentDescription = "Вставить из буфера")
+                    Icon(Icons.Outlined.ContentPaste, contentDescription = "Вставить")
                 }
             },
             minLines = 2,
-            maxLines = 4,
+            maxLines = 3,
             modifier = Modifier
                 .fillMaxWidth()
                 .testTag("input_magnet_uri"),
@@ -107,7 +100,7 @@ fun AddMagnetScreen(
         OutlinedTextField(
             value = title,
             onValueChange = { title = it },
-            label = { Text("Название фильма или сериала") },
+            label = { Text("Название (необязательно)") },
             placeholder = { Text("Например: Дом Дракона") },
             singleLine = true,
             modifier = Modifier
@@ -116,7 +109,7 @@ fun AddMagnetScreen(
             shape = RoundedCornerShape(12.dp)
         )
 
-        // Kind selector
+        // Compact Type selector
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -124,25 +117,19 @@ fun AddMagnetScreen(
             FilterChip(
                 selected = kind == PackKind.SERIES,
                 onClick = { kind = PackKind.SERIES },
-                label = { Text("Сериал (по сериям)") },
-                leadingIcon = if (kind == PackKind.SERIES) {
-                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
-                } else null,
+                label = { Text("Сериал", fontSize = 12.sp) },
                 modifier = Modifier.weight(1f)
             )
 
             FilterChip(
                 selected = kind == PackKind.MOVIE,
                 onClick = { kind = PackKind.MOVIE },
-                label = { Text("Фильм (целиком)") },
-                leadingIcon = if (kind == PackKind.MOVIE) {
-                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
-                } else null,
+                label = { Text("Фильм", fontSize = 12.sp) },
                 modifier = Modifier.weight(1f)
             )
         }
 
-        // Stepper for Series Season & Start Episode
+        // Stepper for Series
         if (kind == PackKind.SERIES) {
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -150,12 +137,12 @@ fun AddMagnetScreen(
                 border = CardDefaults.outlinedCardBorder()
             ) {
                 Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    modifier = Modifier.padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Text(
-                        text = "Точка старта просмотра (/from)",
-                        style = MaterialTheme.typography.titleSmall,
+                        text = "Точка старта",
+                        style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold
                     )
 
@@ -164,18 +151,20 @@ fun AddMagnetScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Сезон: $season", fontWeight = FontWeight.SemiBold)
+                        Text("Сезон: $season", fontSize = 13.sp)
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             FilledTonalIconButton(
                                 onClick = { if (season > 1) season-- },
-                                enabled = season > 1
+                                enabled = season > 1,
+                                modifier = Modifier.size(36.dp)
                             ) {
-                                Icon(Icons.Default.Remove, contentDescription = null)
+                                Icon(Icons.Default.Remove, contentDescription = null, modifier = Modifier.size(16.dp))
                             }
                             FilledTonalIconButton(
-                                onClick = { season++ }
+                                onClick = { season++ },
+                                modifier = Modifier.size(36.dp)
                             ) {
-                                Icon(Icons.Default.Add, contentDescription = null)
+                                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                             }
                         }
                     }
@@ -185,18 +174,20 @@ fun AddMagnetScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Серия: $startEpisode", fontWeight = FontWeight.SemiBold)
+                        Text("Начальная серия: $startEpisode", fontSize = 13.sp)
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             FilledTonalIconButton(
                                 onClick = { if (startEpisode > 1) startEpisode-- },
-                                enabled = startEpisode > 1
+                                enabled = startEpisode > 1,
+                                modifier = Modifier.size(36.dp)
                             ) {
-                                Icon(Icons.Default.Remove, contentDescription = null)
+                                Icon(Icons.Default.Remove, contentDescription = null, modifier = Modifier.size(16.dp))
                             }
                             FilledTonalIconButton(
-                                onClick = { startEpisode++ }
+                                onClick = { startEpisode++ },
+                                modifier = Modifier.size(36.dp)
                             ) {
-                                Icon(Icons.Default.Add, contentDescription = null)
+                                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                             }
                         }
                     }
@@ -204,7 +195,6 @@ fun AddMagnetScreen(
             }
         }
 
-        // Error message if any
         if (errorMessage != null) {
             Text(
                 text = errorMessage ?: "",
@@ -213,35 +203,33 @@ fun AddMagnetScreen(
             )
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(4.dp))
 
         // Submit Button
         Button(
             onClick = {
                 if (magnetUri.isBlank() || !magnetUri.startsWith("magnet:")) {
-                    errorMessage = "Пожалуйста, укажи валидную ссылку формата magnet:?xt=urn:btih:..."
+                    errorMessage = "Укажите ссылку формата magnet:?xt=urn:btih:..."
                     return@Button
                 }
-                isSubmitting = true
                 onAdd(magnetUri, title, kind, season, startEpisode)
-                isSubmitting = false
                 onSuccess()
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(50.dp)
+                .height(48.dp)
                 .testTag("btn_submit_magnet"),
+            shape = RoundedCornerShape(10.dp),
             colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary)
         ) {
-            Icon(Icons.Default.Download, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary)
-            Spacer(modifier = Modifier.width(8.dp))
+            Icon(Icons.Default.Download, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(6.dp))
             Text(
                 text = "Добавить в очередь",
                 fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
                 color = MaterialTheme.colorScheme.onPrimary
             )
         }
-
-        Spacer(modifier = Modifier.height(60.dp))
     }
 }

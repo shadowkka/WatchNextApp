@@ -1,12 +1,13 @@
 package com.example.ui.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -14,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.model.EpisodeItem
@@ -46,37 +48,42 @@ fun PackDetailSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 8.dp)
+                .padding(horizontal = 20.dp, vertical = 6.dp)
         ) {
             // Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = pack.title,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "${pack.kind.label} · Сезон ${pack.season}, с серии ${pack.startEpisode} · ${pack.totalSizeFormatted}",
+                        text = "${pack.kind.label} · Сезон ${pack.season}, старт с ${pack.startEpisode} серии · ${pack.totalSizeFormatted}",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
+                Spacer(modifier = Modifier.width(8.dp))
                 StatusBadge(state = pack.state)
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
-            // Action Buttons matching Telegram bot commands
+            // Action Buttons: short, clean labels that never wrap
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 if (pack.kind == PackKind.SERIES) {
                     FilledTonalButton(
@@ -84,11 +91,12 @@ fun PackDetailSheet(
                         modifier = Modifier
                             .weight(1f)
                             .testTag("action_change_from"),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                        shape = RoundedCornerShape(8.dp)
                     ) {
                         Icon(Icons.Default.Tune, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Сезон/серия (/from)", fontSize = 12.sp)
+                        Text("Сменить старт", fontSize = 12.sp, maxLines = 1)
                     }
 
                     OutlinedButton(
@@ -97,53 +105,65 @@ fun PackDetailSheet(
                         modifier = Modifier
                             .weight(1f)
                             .testTag("action_finish_season"),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                        shape = RoundedCornerShape(8.dp)
                     ) {
-                        Icon(Icons.Default.Done, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text(if (pack.noNextSeason) "Завершён" else "Финал (/finish)", fontSize = 12.sp)
+                        Text(if (pack.noNextSeason) "Завершён" else "Завершить", fontSize = 12.sp, maxLines = 1)
                     }
                 }
 
                 FilledTonalIconButton(
                     onClick = onRetry,
+                    shape = RoundedCornerShape(8.dp),
                     modifier = Modifier.testTag("action_retry_pack")
                 ) {
-                    Icon(Icons.Default.Refresh, contentDescription = "Recheck (/retry)")
+                    Icon(Icons.Outlined.Refresh, contentDescription = "Проверить")
                 }
 
                 IconButton(
                     onClick = { showDeleteConfirmDialog = true },
                     modifier = Modifier.testTag("action_delete_pack")
                 ) {
-                    Icon(Icons.Default.DeleteOutline, contentDescription = "Delete", tint = StatusRose)
+                    Icon(Icons.Outlined.Delete, contentDescription = "Удалить", tint = StatusRose)
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             // Episodes / Files list
-            Text(
-                text = "Файлы раздачи (${pack.episodes.size})",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Файлы серии",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "${pack.episodes.size} файлов",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
 
             Spacer(modifier = Modifier.height(8.dp))
 
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 380.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                    .heightIn(max = 340.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 items(pack.episodes) { episode ->
-                    EpisodeRowItem(episode = episode)
+                    CompactEpisodeRow(episode = episode)
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(20.dp))
         }
     }
 
@@ -153,7 +173,7 @@ fun PackDetailSheet(
 
         AlertDialog(
             onDismissRequest = { showChangeFromDialog = false },
-            title = { Text("Начать просмотр с:") },
+            title = { Text("Старт просмотра") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Row(
@@ -206,7 +226,7 @@ fun PackDetailSheet(
                         showChangeFromDialog = false
                     }
                 ) {
-                    Text("Применить (/from)")
+                    Text("Сохранить")
                 }
             },
             dismissButton = {
@@ -222,7 +242,7 @@ fun PackDetailSheet(
             onDismissRequest = { showDeleteConfirmDialog = false },
             title = { Text("Удалить раздачу?") },
             text = {
-                Text("Раздача будет удалена из очереди и торрент-клиента qBittorrent. Hardlink в Jellyfin также будет очищен.")
+                Text("Раздача будет удалена из qBittorrent и библиотеки Jellyfin.")
             },
             confirmButton = {
                 Button(
@@ -246,59 +266,49 @@ fun PackDetailSheet(
 }
 
 @Composable
-fun EpisodeRowItem(episode: EpisodeItem) {
+fun CompactEpisodeRow(episode: EpisodeItem) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
         shape = RoundedCornerShape(8.dp)
     ) {
-        Column(modifier = Modifier.padding(10.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = episode.label,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                EpisodeStatusBadge(status = episode.status)
-            }
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = episode.name,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1
-            )
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = episode.label,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = episode.sizeFormatted,
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(modifier = Modifier.height(2.dp))
                 LinearProgressIndicator(
                     progress = { episode.progress },
                     modifier = Modifier
-                        .weight(1f)
-                        .height(4.dp)
+                        .fillMaxWidth(0.85f)
+                        .height(3.dp)
                         .clip(RoundedCornerShape(2.dp)),
                     color = CyanPrimary,
-                    trackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = "${(episode.progress * 100).toInt()}% · ${episode.sizeFormatted}",
-                    fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    trackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
                 )
             }
+
+            EpisodeStatusBadge(status = episode.status)
         }
     }
 }

@@ -6,6 +6,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.CloudQueue
+import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,6 +20,7 @@ import com.example.data.AppSettings
 import com.example.ui.theme.CyanPrimary
 import com.example.ui.theme.StatusGreen
 import com.example.ui.theme.StatusRose
+import kotlinx.coroutines.launch
 
 @Composable
 fun SettingsScreen(
@@ -29,12 +32,6 @@ fun SettingsScreen(
 ) {
     var serverUrl by remember(currentSettings) { mutableStateOf(currentSettings.serverUrl) }
     var apiToken by remember(currentSettings) { mutableStateOf(currentSettings.apiToken) }
-    var qbitUrl by remember(currentSettings) { mutableStateOf(currentSettings.qbitUrl) }
-    var qbitUser by remember(currentSettings) { mutableStateOf(currentSettings.qbitUsername) }
-    var qbitPass by remember(currentSettings) { mutableStateOf(currentSettings.qbitPassword) }
-    var jackettUrl by remember(currentSettings) { mutableStateOf(currentSettings.jackettUrl) }
-    var jackettKey by remember(currentSettings) { mutableStateOf(currentSettings.jackettApiKey) }
-    var jellyfinUrl by remember(currentSettings) { mutableStateOf(currentSettings.jellyfinUrl) }
     var isDemoMode by remember(currentSettings) { mutableStateOf(currentSettings.isDemoMode) }
 
     var episodeLimit by remember(currentSettings) { mutableIntStateOf(currentSettings.episodeLimit) }
@@ -53,39 +50,39 @@ fun SettingsScreen(
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Text(
-            text = "Параметры и сервер",
+            text = "Настройки",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold
         )
 
-        // Queue Limits Section (/limit, /reserve)
+        // Queue Limits
         Card(
             shape = RoundedCornerShape(12.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             border = CardDefaults.outlinedCardBorder()
         ) {
             Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+                modifier = Modifier.padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    text = "Лимиты очереди (/limit, /reserve)",
-                    style = MaterialTheme.typography.titleMedium,
+                    text = "Лимиты очереди",
+                    style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = CyanPrimary
                 )
 
-                // Episode count limit
+                // Episode limit slider
                 Column {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Лимит активных серий вперед:")
-                        Text("$episodeLimit серий", fontWeight = FontWeight.Bold, color = CyanPrimary)
+                        Text("Серий вперед:", fontSize = 13.sp)
+                        Text("$episodeLimit", fontWeight = FontWeight.Bold, color = CyanPrimary)
                     }
                     Slider(
                         value = episodeLimit.toFloat(),
@@ -96,20 +93,20 @@ fun SettingsScreen(
                     )
                 }
 
-                // Reserve GB
+                // Reserve GB slider
                 Column {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Резерв свободного места на диске:")
+                        Text("Резерв места на диске:", fontSize = 13.sp)
                         Text("${reserveGb.toInt()} ГБ", fontWeight = FontWeight.Bold, color = CyanPrimary)
                     }
                     Slider(
                         value = reserveGb,
                         onValueChange = { reserveGb = it },
-                        valueRange = 1f..50f,
-                        steps = 48,
+                        valueRange = 1f..30f,
+                        steps = 28,
                         modifier = Modifier.testTag("slider_reserve_gb")
                     )
                 }
@@ -120,14 +117,10 @@ fun SettingsScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
-                        Text("Ограничение общего объёма (ГБ)")
-                        Text(
-                            if (hasCapGb) "${capGb.toInt()} ГБ максимум" else "Без ограничений",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    Text(
+                        if (hasCapGb) "Лимит объёма: ${capGb.toInt()} ГБ" else "Лимит объёма: без ограничений",
+                        fontSize = 13.sp
+                    )
                     Switch(
                         checked = hasCapGb,
                         onCheckedChange = { hasCapGb = it },
@@ -146,51 +139,19 @@ fun SettingsScreen(
             }
         }
 
-        // Demo Mode vs Real Server Toggle
-        Card(
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            border = CardDefaults.outlinedCardBorder()
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Демо-режим песочницы",
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "Позволяет исследовать и тестировать приложение с имитацией домашнего сервера WatchNext, qBittorrent и Jackett без поднятого ПК",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Switch(
-                        checked = isDemoMode,
-                        onCheckedChange = { isDemoMode = it },
-                        modifier = Modifier.testTag("switch_demo_mode")
-                    )
-                }
-            }
-        }
-
-        // Server Connection Section
+        // Server Connection
         Card(
             shape = RoundedCornerShape(12.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             border = CardDefaults.outlinedCardBorder()
         ) {
             Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                modifier = Modifier.padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Text(
-                    text = "Подключение к домашнему серверу",
-                    style = MaterialTheme.typography.titleMedium,
+                    text = "Сервер WatchNext",
+                    style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = CyanPrimary
                 )
@@ -198,100 +159,83 @@ fun SettingsScreen(
                 OutlinedTextField(
                     value = serverUrl,
                     onValueChange = { serverUrl = it },
-                    label = { Text("WatchNext Server URL") },
+                    label = { Text("Адрес сервера") },
                     placeholder = { Text("http://192.168.1.100:8000") },
                     singleLine = true,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .testTag("input_server_url")
+                        .testTag("input_server_url"),
+                    shape = RoundedCornerShape(10.dp)
                 )
 
                 OutlinedTextField(
                     value = apiToken,
                     onValueChange = { apiToken = it },
-                    label = { Text("API токен (опционально)") },
-                    placeholder = { Text("Секретный токен авторизации") },
+                    label = { Text("API токен") },
+                    placeholder = { Text("Необязательно") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp)
                 )
 
-                Divider(modifier = Modifier.padding(vertical = 4.dp))
-
-                Text(
-                    text = "Прямой доступ к службам (при необходимости):",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                OutlinedTextField(
-                    value = qbitUrl,
-                    onValueChange = { qbitUrl = it },
-                    label = { Text("qBittorrent Web UI") },
-                    placeholder = { Text("http://192.168.1.100:8080") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = qbitUser,
-                        onValueChange = { qbitUser = it },
-                        label = { Text("qBit Логин") },
-                        singleLine = true,
-                        modifier = Modifier.weight(1f)
-                    )
-                    OutlinedTextField(
-                        value = qbitPass,
-                        onValueChange = { qbitPass = it },
-                        label = { Text("qBit Пароль") },
-                        singleLine = true,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                OutlinedTextField(
-                    value = jackettUrl,
-                    onValueChange = { jackettUrl = it },
-                    label = { Text("Jackett Torznab URL") },
-                    placeholder = { Text("http://192.168.1.100:9117") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                OutlinedTextField(
-                    value = jellyfinUrl,
-                    onValueChange = { jellyfinUrl = it },
-                    label = { Text("Jellyfin Server URL") },
-                    placeholder = { Text("http://192.168.1.100:8096") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                // Test Connection Button
                 OutlinedButton(
                     onClick = {
                         isTestingConnection = true
                         testStatusText = null
-                        kotlinx.coroutines.CoroutineScope(coroutineScope.coroutineContext).run {
-                            // Launch test connection
+                        coroutineScope.launch {
+                            val (success, message) = onTestConnection(currentSettings.copy(serverUrl = serverUrl))
+                            testSucceeded = success
+                            testStatusText = message
+                            isTestingConnection = false
                         }
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .testTag("btn_test_connection")
+                        .testTag("btn_test_connection"),
+                    shape = RoundedCornerShape(10.dp)
                 ) {
-                    Icon(Icons.Default.CloudQueue, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Проверить доступность сервера")
+                    if (isTestingConnection) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                        Spacer(modifier = Modifier.width(6.dp))
+                    } else {
+                        Icon(Icons.Outlined.CloudQueue, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
+                    Text("Проверить связь", fontSize = 13.sp)
                 }
 
                 if (testStatusText != null) {
                     Text(
                         text = testStatusText ?: "",
                         color = if (testSucceeded == true) StatusGreen else StatusRose,
-                        style = MaterialTheme.typography.bodySmall
+                        fontSize = 12.sp
                     )
                 }
+            }
+        }
+
+        // Demo Mode Toggle
+        Card(
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = CardDefaults.outlinedCardBorder()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Демо-режим", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Text("Имитация очередей без сервера", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Switch(
+                    checked = isDemoMode,
+                    onCheckedChange = { isDemoMode = it },
+                    modifier = Modifier.testTag("switch_demo_mode")
+                )
             }
         }
 
@@ -301,12 +245,6 @@ fun SettingsScreen(
                 val updated = currentSettings.copy(
                     serverUrl = serverUrl,
                     apiToken = apiToken,
-                    qbitUrl = qbitUrl,
-                    qbitUsername = qbitUser,
-                    qbitPassword = qbitPass,
-                    jackettUrl = jackettUrl,
-                    jackettApiKey = jackettKey,
-                    jellyfinUrl = jellyfinUrl,
                     episodeLimit = episodeLimit,
                     capGb = if (hasCapGb) capGb else null,
                     reserveGb = reserveGb,
@@ -317,32 +255,12 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp)
-                .testTag("btn_save_settings")
+                .testTag("btn_save_settings"),
+            shape = RoundedCornerShape(10.dp)
         ) {
-            Icon(Icons.Default.Save, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Сохранить настройки")
-        }
-
-        // Diagnostic Log card
-        if (lastLog != null) {
-            Card(
-                shape = RoundedCornerShape(8.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-            ) {
-                Row(
-                    modifier = Modifier.padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Default.Info, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Лог: $lastLog",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
+            Icon(Icons.Outlined.Save, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(6.dp))
+            Text("Сохранить", fontWeight = FontWeight.Bold, fontSize = 14.sp)
         }
 
         Spacer(modifier = Modifier.height(60.dp))

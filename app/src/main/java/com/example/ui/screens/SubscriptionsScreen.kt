@@ -4,15 +4,20 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Subscriptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.model.SubscriptionItem
@@ -37,9 +42,10 @@ fun SubscriptionsScreen(
                 onClick = { showAddDialog = true },
                 containerColor = IndigoSecondary,
                 contentColor = DarkBackground,
+                shape = CircleShape,
                 modifier = Modifier.testTag("fab_add_subscription")
             ) {
-                Icon(Icons.Default.NotificationsActive, contentDescription = "Добавить подписку")
+                Icon(Icons.Default.Add, contentDescription = "Добавить подписку")
             }
         },
         modifier = modifier
@@ -50,58 +56,54 @@ fun SubscriptionsScreen(
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp)
         ) {
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-            Text(
-                text = "Подписки на релизы",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "Раз в 2 часа WatchNext проверяет даты TVmaze и торренты Jackett. Когда серия выходит в нужной озвучке, раздачу можно импортировать в один тап.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Подписки",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "${subscriptions.size} сериалов",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             if (subscriptions.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.padding(32.dp)
-                    ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(
-                            Icons.Default.Subscriptions,
+                            Icons.Outlined.Subscriptions,
                             contentDescription = null,
-                            modifier = Modifier.size(56.dp),
+                            modifier = Modifier.size(48.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Нет активных подписок",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "Нажми кнопку ниже, чтобы отслеживать новые сезоны и серии",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            text = "Нет подписок",
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
             } else {
                 LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding = PaddingValues(bottom = 88.dp)
                 ) {
                     items(subscriptions, key = { it.id }) { sub ->
-                        SubscriptionCard(
+                        CleanSubscriptionCard(
                             sub = sub,
                             onImport = { onImportRelease(sub.id) },
                             onDelete = { onRemoveSubscription(sub.id) }
@@ -114,28 +116,28 @@ fun SubscriptionsScreen(
 
     if (showAddDialog) {
         var showName by remember { mutableStateOf("") }
-        var preferredQuality by remember { mutableStateOf("1080p · WEB-DL") }
+        var preferredQuality by remember { mutableStateOf("1080p") }
         var preferredVoice by remember { mutableStateOf("LostFilm") }
 
         AlertDialog(
             onDismissRequest = { showAddDialog = false },
-            title = { Text("Новая подписка на сериал") },
+            title = { Text("Подписка на сериал") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlinedTextField(
                         value = showName,
                         onValueChange = { showName = it },
                         label = { Text("Название сериала") },
-                        placeholder = { Text("Например: Разделение (Severance)") },
+                        placeholder = { Text("Разделение / Severance") },
                         singleLine = true,
                         modifier = Modifier
                             .fillMaxWidth()
                             .testTag("input_sub_name")
                     )
 
-                    Text("Желаемое качество:", style = MaterialTheme.typography.labelMedium)
+                    Text("Качество:", style = MaterialTheme.typography.labelSmall)
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        listOf("1080p · WEB-DL", "2160p 4K", "720p").forEach { q ->
+                        listOf("1080p", "4K", "720p").forEach { q ->
                             FilterChip(
                                 selected = preferredQuality == q,
                                 onClick = { preferredQuality = q },
@@ -144,7 +146,7 @@ fun SubscriptionsScreen(
                         }
                     }
 
-                    Text("Озвучка / студия:", style = MaterialTheme.typography.labelMedium)
+                    Text("Озвучка:", style = MaterialTheme.typography.labelSmall)
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         listOf("LostFilm", "HDRezka", "Кубик в кубе", "Любая").forEach { v ->
                             FilterChip(
@@ -179,7 +181,7 @@ fun SubscriptionsScreen(
 }
 
 @Composable
-fun SubscriptionCard(
+fun CleanSubscriptionCard(
     sub: SubscriptionItem,
     onImport: () -> Unit,
     onDelete: () -> Unit
@@ -192,85 +194,84 @@ fun SubscriptionCard(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         border = CardDefaults.outlinedCardBorder()
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = sub.showTitle,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "Остановлен на S${String.format("%02d", sub.lastSeason)}E${String.format("%02d", sub.lastEpisode)} · След: ${sub.nextEpisodeLabel ?: "Ожидается дата"}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                Text(
+                    text = sub.showTitle,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
 
                 IconButton(
                     onClick = onDelete,
-                    modifier = Modifier.size(28.dp)
+                    modifier = Modifier.size(24.dp)
                 ) {
-                    Icon(Icons.Default.Close, contentDescription = "Delete", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Icon(
+                        Icons.Outlined.Close,
+                        contentDescription = "Удалить",
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Chips
+            // Status & Tags row
             Row(
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 QualityChip(quality = sub.preferredQuality)
                 VoiceChip(voice = sub.preferredVoice)
 
-                val (statusColor, statusText) = when (sub.status) {
-                    SubscriptionStatus.ACTIVE -> Pair(StatusBlue, "Отслеживание")
-                    SubscriptionStatus.EPISODE_OUT -> Pair(StatusAmber, "Серия вышла — ждём озвучку")
-                    SubscriptionStatus.RELEASE_FOUND -> Pair(StatusGreen, "Раздача найдена!")
-                    SubscriptionStatus.UP_TO_DATE -> Pair(StatusGreen, "Актуально")
+                val (statusColor, statusBg) = when (sub.status) {
+                    SubscriptionStatus.ACTIVE -> Pair(StatusBlue, StatusBlue.copy(alpha = 0.12f))
+                    SubscriptionStatus.EPISODE_OUT -> Pair(StatusAmber, StatusAmber.copy(alpha = 0.12f))
+                    SubscriptionStatus.RELEASE_FOUND -> Pair(StatusGreen, StatusGreen.copy(alpha = 0.12f))
+                    SubscriptionStatus.UP_TO_DATE -> Pair(StatusGreen, StatusGreen.copy(alpha = 0.12f))
                 }
 
-                Text(
-                    text = statusText,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = statusColor
-                )
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(statusBg)
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = sub.status.label,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = statusColor,
+                        maxLines = 1
+                    )
+                }
             }
 
-            // Release Found prompt
+            // Quick download if release found
             if (sub.status == SubscriptionStatus.RELEASE_FOUND && sub.candidateReleaseTitle != null) {
-                Spacer(modifier = Modifier.height(12.dp))
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = StatusGreen.copy(alpha = 0.12f)),
-                    shape = RoundedCornerShape(8.dp)
+                Spacer(modifier = Modifier.height(4.dp))
+                Button(
+                    onClick = onImport,
+                    colors = ButtonDefaults.buttonColors(containerColor = StatusGreen),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("btn_import_release_${sub.id}")
                 ) {
-                    Column(modifier = Modifier.padding(10.dp)) {
-                        Text(
-                            text = sub.candidateReleaseTitle,
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Button(
-                            onClick = onImport,
-                            colors = ButtonDefaults.buttonColors(containerColor = StatusGreen),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                            modifier = Modifier.testTag("btn_import_release_${sub.id}")
-                        ) {
-                            Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Добавить в очередь", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        }
-                    }
+                    Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Скачать найденный релиз", fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
                 }
             }
         }

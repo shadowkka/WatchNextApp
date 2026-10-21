@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.model.PackKind
@@ -35,29 +36,16 @@ fun SearchScreen(
     var selectedKind by remember { mutableStateOf(PackKind.SERIES) }
     var selectedQuality by remember { mutableStateOf<String?>(null) }
     var selectedVoice by remember { mutableStateOf<String?>(null) }
-    var minSeeders by remember { mutableIntStateOf(0) }
 
     var results by remember { mutableStateOf<List<TorrentSearchResult>>(emptyList()) }
     var isSearching by remember { mutableStateOf(false) }
 
     var selectedForAdd by remember { mutableStateOf<TorrentSearchResult?>(null) }
 
-    val coroutineScope = rememberCoroutineScope()
-
-    fun triggerSearch() {
-        if (searchQuery.isBlank()) return
-        isSearching = true
-        kotlinx.coroutines.CoroutineScope(coroutineScope.coroutineContext).run {
-            coroutineScope.run {
-                // launch search
-            }
-        }
-    }
-
-    LaunchedEffect(searchQuery, selectedKind, selectedQuality, selectedVoice, minSeeders) {
+    LaunchedEffect(searchQuery, selectedKind, selectedQuality, selectedVoice) {
         if (searchQuery.isNotBlank()) {
             isSearching = true
-            results = onSearch(searchQuery, selectedKind, minSeeders, selectedVoice, selectedQuality)
+            results = onSearch(searchQuery, selectedKind, 0, selectedVoice, selectedQuality)
             isSearching = false
         }
     }
@@ -70,7 +58,7 @@ fun SearchScreen(
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
                 Text(
-                    text = "Поиск торрентов (Jackett)",
+                    text = "Поиск торрентов",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
@@ -85,7 +73,7 @@ fun SearchScreen(
                     trailingIcon = {
                         if (searchQuery.isNotEmpty()) {
                             IconButton(onClick = { searchQuery = "" }) {
-                                Icon(Icons.Default.Clear, contentDescription = "Clear")
+                                Icon(Icons.Default.Clear, contentDescription = "Очистить")
                             }
                         }
                     },
@@ -98,46 +86,38 @@ fun SearchScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Kind selector & Filter chips row
+                // Kind & quick filter chips in single smooth row
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     FilterChip(
                         selected = selectedKind == PackKind.SERIES,
                         onClick = { selectedKind = PackKind.SERIES },
-                        label = { Text("Сериалы") },
-                        leadingIcon = if (selectedKind == PackKind.SERIES) {
-                            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
-                        } else null
+                        label = { Text("Сериалы", fontSize = 12.sp) }
                     )
 
                     FilterChip(
                         selected = selectedKind == PackKind.MOVIE,
                         onClick = { selectedKind = PackKind.MOVIE },
-                        label = { Text("Фильмы") },
-                        leadingIcon = if (selectedKind == PackKind.MOVIE) {
-                            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
-                        } else null
+                        label = { Text("Фильмы", fontSize = 12.sp) }
                     )
 
-                    // Quality filters
-                    listOf("1080p", "2160p", "720p").forEach { q ->
+                    listOf("1080p", "4K", "720p").forEach { q ->
                         FilterChip(
                             selected = selectedQuality == q,
                             onClick = { selectedQuality = if (selectedQuality == q) null else q },
-                            label = { Text(q) }
+                            label = { Text(q, fontSize = 12.sp) }
                         )
                     }
 
-                    // Studio filters
                     listOf("LostFilm", "HDRezka", "Кубик в кубе", "Дубляж").forEach { v ->
                         FilterChip(
                             selected = selectedVoice == v,
                             onClick = { selectedVoice = if (selectedVoice == v) null else v },
-                            label = { Text(v) }
+                            label = { Text(v, fontSize = 12.sp) }
                         )
                     }
                 }
@@ -167,17 +147,11 @@ fun SearchScreen(
                         modifier = Modifier.size(48.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = "Ничего не найдено",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Попробуй изменить запрос или фильтры качества",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             } else {
@@ -185,11 +159,11 @@ fun SearchScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    contentPadding = PaddingValues(top = 8.dp, bottom = 88.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(top = 4.dp, bottom = 88.dp)
                 ) {
                     items(results) { item ->
-                        SearchResultCard(
+                        CleanSearchResultCard(
                             result = item,
                             onAdd = { selectedForAdd = item }
                         )
@@ -209,14 +183,16 @@ fun SearchScreen(
             onDismissRequest = { selectedForAdd = null },
             title = { Text("Добавить в очередь?") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
                         text = item.title,
                         style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = "Размер: ${item.sizeFormatted} · Сиды: ${item.seeders}",
+                        text = "${item.sizeFormatted} · ${item.seeders} сидов",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -243,7 +219,7 @@ fun SearchScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("Начать с: Сезон $confirmSeason, Серия $confirmEpisode")
+                            Text("Сезон $confirmSeason, с серии $confirmEpisode")
                             Row {
                                 FilledTonalIconButton(
                                     onClick = { if (confirmEpisode > 1) confirmEpisode-- },
@@ -269,7 +245,7 @@ fun SearchScreen(
                     },
                     modifier = Modifier.testTag("btn_confirm_add_search")
                 ) {
-                    Text("Добавить в очередь")
+                    Text("Добавить")
                 }
             },
             dismissButton = {
@@ -282,7 +258,7 @@ fun SearchScreen(
 }
 
 @Composable
-fun SearchResultCard(
+fun CleanSearchResultCard(
     result: TorrentSearchResult,
     onAdd: () -> Unit
 ) {
@@ -294,68 +270,51 @@ fun SearchResultCard(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         border = CardDefaults.outlinedCardBorder()
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
             // Badges row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     TrackerBadge(tracker = result.tracker)
                     QualityChip(quality = result.quality)
+                    result.voices.take(1).forEach { voice ->
+                        VoiceChip(voice = voice)
+                    }
                 }
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    horizontalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     Icon(
                         Icons.Default.ArrowUpward,
-                        contentDescription = "Seeders",
+                        contentDescription = "Сиды",
                         tint = StatusGreen,
-                        modifier = Modifier.size(14.dp)
+                        modifier = Modifier.size(13.dp)
                     )
                     Text(
                         text = "${result.seeders}",
                         fontWeight = FontWeight.Bold,
                         color = StatusGreen,
-                        fontSize = 12.sp
+                        fontSize = 11.sp
                     )
-                    if (result.peers != null) {
-                        Text(
-                            text = "/ ${result.peers}",
-                            fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
                 }
             }
-
-            Spacer(modifier = Modifier.height(8.dp))
 
             Text(
                 text = result.title,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Studio badges
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                result.voices.forEach { voice ->
-                    VoiceChip(voice = voice)
-                }
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
 
             // Size & Add Button
             Row(
@@ -365,19 +324,20 @@ fun SearchResultCard(
             ) {
                 Text(
                     text = result.sizeFormatted,
-                    fontSize = 13.sp,
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 Button(
                     onClick = onAdd,
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                    shape = RoundedCornerShape(8.dp),
                     modifier = Modifier.testTag("btn_add_to_queue")
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("В очередь", fontSize = 12.sp)
+                    Text("В очередь", fontSize = 12.sp, maxLines = 1)
                 }
             }
         }
