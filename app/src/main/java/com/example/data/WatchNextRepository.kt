@@ -1,5 +1,6 @@
 package com.example.data
 
+import com.example.data.api.*
 import com.example.model.*
 import com.example.util.TorrentParser
 import kotlinx.coroutines.CoroutineScope
@@ -9,20 +10,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
-import okhttp3.Request
 import java.util.UUID
-import java.util.concurrent.TimeUnit
 
 class WatchNextRepository(
     private val preferences: ServerPreferences,
     private val scope: CoroutineScope
 ) {
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(5, TimeUnit.SECONDS)
-        .readTimeout(10, TimeUnit.SECONDS)
-        .build()
-
     private val _status = MutableStateFlow(QueueStatus())
     val status: StateFlow<QueueStatus> = _status.asStateFlow()
 
@@ -35,22 +28,41 @@ class WatchNextRepository(
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
-    private val _lastLog = MutableStateFlow<String?>("Инициализация WatchNext")
+    private val _lastLog = MutableStateFlow<String?>("WatchNext готов к работе")
     val lastLog: StateFlow<String?> = _lastLog.asStateFlow()
 
     private var currentSettings: AppSettings = AppSettings()
+    private var apiService: WatchNextApiService? = null
 
     init {
         loadDemoData()
         scope.launch {
             preferences.settingsFlow.collect { settings ->
                 currentSettings = settings
-                _status.value = _status.value.copy(
-                    episodeCountLimit = settings.episodeLimit,
-                    capGb = settings.capGb,
-                    reserveGb = settings.reserveGb
+                updateApiService()
+                if (!settings.isDemoMode) {
+                    refresh()
+                } else {
+                    _status.value = _status.value.copy(
+                        episodeCountLimit = settings.episodeLimit,
+                        capGb = settings.capGb,
+                        reserveGb = settings.reserveGb
+                    )
+                }
+            }
+        }
+    }
+
+    private fun updateApiService() {
+        try {
+            if (currentSettings.serverUrl.isNotBlank() && currentSettings.serverUrl.startsWith("http")) {
+                apiService = WatchNextApiService.create(
+                    baseUrl = currentSettings.serverUrl,
+                    apiToken = currentSettings.apiToken
                 )
             }
+        } catch (e: Exception) {
+            apiService = null
         }
     }
 
@@ -58,7 +70,7 @@ class WatchNextRepository(
         val samplePacks = listOf(
             PackItem(
                 hash = "4a8e3290bbf127889104fa2891bb3a2012019481",
-                title = "Дом Дракона (House of the Dragon)",
+                title = "Дом Дракона",
                 kind = PackKind.SERIES,
                 season = 2,
                 startEpisode = 1,
@@ -83,7 +95,7 @@ class WatchNextRepository(
             ),
             PackItem(
                 hash = "7f2149b089c8a14b58e7220194883199bc4527aa",
-                title = "Дюна: Часть вторая (Dune: Part Two)",
+                title = "Дюна: Часть вторая",
                 kind = PackKind.MOVIE,
                 season = 1,
                 startEpisode = 1,
@@ -96,12 +108,12 @@ class WatchNextRepository(
                 totalEpisodes = 1,
                 noNextSeason = true,
                 episodes = listOf(
-                    EpisodeItem(0, "Dune.Part.Two.2024.1080p.WEB-DL.DDP5.1.Atmos.mkv", 1, 1, "Фильм", 18_400_000_000L, 0.88f, EpisodeStatus.DOWNLOADING, false)
+                    EpisodeItem(0, "Dune.Part.Two.2024.1080p.mkv", 1, 1, "Фильм", 18_400_000_000L, 0.88f, EpisodeStatus.DOWNLOADING, false)
                 )
             ),
             PackItem(
                 hash = "3194aa82bbf127889104fa2891bb3a2012019499",
-                title = "Пингвин (The Penguin)",
+                title = "Пингвин",
                 kind = PackKind.SERIES,
                 season = 1,
                 startEpisode = 1,
@@ -114,76 +126,40 @@ class WatchNextRepository(
                 totalEpisodes = 8,
                 noNextSeason = false,
                 episodes = listOf(
-                    EpisodeItem(0, "The.Penguin.S01E01.1080p.mkv", 1, 1, "S01E01", 4_500_000_000L, 1.0f, EpisodeStatus.PLAYED, true),
-                    EpisodeItem(1, "The.Penguin.S01E02.1080p.mkv", 1, 2, "S01E02", 4_800_000_000L, 1.0f, EpisodeStatus.COMPLETED, true),
-                    EpisodeItem(2, "The.Penguin.S01E03.1080p.mkv", 1, 3, "S01E03", 5_100_000_000L, 1.0f, EpisodeStatus.COMPLETED, true),
-                    EpisodeItem(3, "The.Penguin.S01E04.1080p.mkv", 1, 4, "S01E04", 4_600_000_000L, 0.0f, EpisodeStatus.WAITING_LIMIT, false),
-                    EpisodeItem(4, "The.Penguin.S01E05.1080p.mkv", 1, 5, "S01E05", 4_700_000_000L, 0.0f, EpisodeStatus.WAITING_LIMIT, false)
+                    EpisodeItem(0, "The.Penguin.S01E01.mkv", 1, 1, "S01E01", 4_500_000_000L, 1.0f, EpisodeStatus.PLAYED, true),
+                    EpisodeItem(1, "The.Penguin.S01E02.mkv", 1, 2, "S01E02", 4_800_000_000L, 1.0f, EpisodeStatus.COMPLETED, true),
+                    EpisodeItem(2, "The.Penguin.S01E03.mkv", 1, 3, "S01E03", 5_100_000_000L, 1.0f, EpisodeStatus.COMPLETED, true)
                 )
-            ),
-            PackItem(
-                hash = "920194883199bc4527aa7f2149b089c8a14b58e7",
-                title = "Медведь (The Bear)",
-                kind = PackKind.SERIES,
-                season = 3,
-                startEpisode = 1,
-                state = PackState.COMPLETE,
-                progress = 1.0f,
-                totalSize = 22_000_000_000L,
-                downloadedSize = 22_000_000_000L,
-                downloadSpeed = 0L,
-                readyEpisodes = 10,
-                totalEpisodes = 10,
-                noNextSeason = true,
-                episodes = (1..10).map { ep ->
-                    EpisodeItem(ep - 1, "The.Bear.S03E${String.format("%02d", ep)}.1080p.mkv", 3, ep, "S03E${String.format("%02d", ep)}", 2_200_000_000L, 1.0f, EpisodeStatus.COMPLETED, true)
-                }
             )
         )
         _packs.value = samplePacks
 
-        val sampleSubscriptions = listOf(
+        _subscriptions.value = listOf(
             SubscriptionItem(
                 id = "sub-1",
                 showTitle = "Разделение (Severance)",
-                preferredQuality = "1080p · WEB-DL",
+                preferredQuality = "1080p",
                 preferredVoice = "LostFilm",
                 status = SubscriptionStatus.RELEASE_FOUND,
                 lastSeason = 2,
                 lastEpisode = 1,
                 nextEpisodeDate = "2026-10-24",
                 nextEpisodeLabel = "Сезон 2, Серия 1",
-                candidateReleaseTitle = "Разделение / Severance (Сезон 2, Серии 1) (2026) WEB-DL 1080p | LostFilm",
-                candidateReleaseMagnet = "magnet:?xt=urn:btih:38bdf8818cf84f46e50284c7161b220d1117abcd&dn=Severance.S02E01.1080p.LostFilm"
+                candidateReleaseTitle = "Разделение / Severance S02E01 1080p LostFilm",
+                candidateReleaseMagnet = "magnet:?xt=urn:btih:38bdf8818cf84f46e50284c7161b220d1117abcd"
             ),
             SubscriptionItem(
                 id = "sub-2",
                 showTitle = "Одни из нас (The Last of Us)",
-                preferredQuality = "2160p · 4K",
+                preferredQuality = "2160p",
                 preferredVoice = "HDRezka",
                 status = SubscriptionStatus.EPISODE_OUT,
                 lastSeason = 2,
                 lastEpisode = 3,
                 nextEpisodeDate = "2026-10-21",
-                nextEpisodeLabel = "Сезон 2, Серия 4",
-                candidateReleaseTitle = null,
-                candidateReleaseMagnet = null
-            ),
-            SubscriptionItem(
-                id = "sub-3",
-                showTitle = "Пацаны (The Boys)",
-                preferredQuality = "1080p · WEB-DL",
-                preferredVoice = "Кубик в кубе",
-                status = SubscriptionStatus.ACTIVE,
-                lastSeason = 5,
-                lastEpisode = 0,
-                nextEpisodeDate = "2026-11-12",
-                nextEpisodeLabel = "Сезон 5, Серия 1",
-                candidateReleaseTitle = null,
-                candidateReleaseMagnet = null
+                nextEpisodeLabel = "Сезон 2, Серия 4"
             )
         )
-        _subscriptions.value = sampleSubscriptions
 
         _status.value = QueueStatus(
             episodeCountLimit = 5,
@@ -194,35 +170,90 @@ class WatchNextRepository(
             diskFreeGb = 184.2f,
             diskUsedGb = 327.8f,
             activeDownloadsCount = 2,
-            totalPacksCount = 4
+            totalPacksCount = 3
         )
     }
 
     suspend fun refresh() {
         _isRefreshing.value = true
         withContext(Dispatchers.IO) {
-            try {
-                if (!currentSettings.isDemoMode && currentSettings.serverUrl.isNotBlank()) {
-                    val req = Request.Builder()
-                        .url("${currentSettings.serverUrl.trimEnd('/')}/api/status")
-                        .apply {
-                            if (currentSettings.apiToken.isNotBlank()) {
-                                addHeader("Authorization", "Bearer ${currentSettings.apiToken}")
+            val api = apiService
+            if (!currentSettings.isDemoMode && api != null) {
+                try {
+                    val statusRes = api.getStatus()
+                    _status.value = QueueStatus(
+                        episodeCountLimit = statusRes.episodeCountLimit ?: 5,
+                        capGb = statusRes.capGb,
+                        reserveGb = statusRes.reserveGb,
+                        isPaused = statusRes.isPaused,
+                        diskTotalGb = statusRes.diskTotalGb,
+                        diskFreeGb = statusRes.diskFreeGb,
+                        diskUsedGb = statusRes.diskUsedGb,
+                        activeDownloadsCount = statusRes.activeDownloadsCount,
+                        totalPacksCount = statusRes.totalPacksCount,
+                        serviceAlert = statusRes.serviceAlert,
+                        limitAlert = statusRes.limitAlert
+                    )
+
+                    val packsRes = api.listPacks()
+                    _packs.value = packsRes.map { p ->
+                        PackItem(
+                            hash = p.hash,
+                            title = p.title,
+                            kind = if (p.kind.equals("movie", ignoreCase = true)) PackKind.MOVIE else PackKind.SERIES,
+                            season = p.season,
+                            startEpisode = p.startEpisode,
+                            state = mapPackState(p.state),
+                            progress = p.progress,
+                            totalSize = p.totalSize,
+                            downloadedSize = p.downloadedSize,
+                            downloadSpeed = p.downloadSpeed,
+                            readyEpisodes = p.readyEpisodes,
+                            totalEpisodes = p.totalEpisodes,
+                            noNextSeason = p.noNextSeason,
+                            episodes = p.episodes.map { e ->
+                                EpisodeItem(
+                                    index = e.index,
+                                    name = e.name,
+                                    season = e.season,
+                                    episode = e.episode,
+                                    label = e.label,
+                                    size = e.size,
+                                    progress = e.progress,
+                                    status = mapEpisodeStatus(e.status),
+                                    isPublished = e.isPublished
+                                )
                             }
-                        }
-                        .build()
-                    val response = client.newCall(req).execute()
-                    if (response.isSuccessful) {
-                        _lastLog.value = "Статус успешно синхронизирован с сервером (${System.currentTimeMillis() % 10000})"
+                        )
                     }
-                } else {
-                    kotlinx.coroutines.delay(400)
-                    _lastLog.value = "Локальное обновление очереди завершено"
+
+                    val subsRes = api.listSubscriptions()
+                    _subscriptions.value = subsRes.map { s ->
+                        SubscriptionItem(
+                            id = s.id,
+                            showTitle = s.showTitle,
+                            preferredQuality = s.preferredQuality,
+                            preferredVoice = s.preferredVoice,
+                            status = mapSubscriptionStatus(s.status),
+                            lastSeason = s.lastSeason,
+                            lastEpisode = s.lastEpisode,
+                            nextEpisodeDate = s.nextEpisodeDate,
+                            nextEpisodeLabel = s.nextEpisodeLabel,
+                            candidateReleaseTitle = s.candidateReleaseTitle,
+                            candidateReleaseMagnet = s.candidateReleaseMagnet
+                        )
+                    }
+
+                    _lastLog.value = "Синхронизировано с сервером WatchNext"
+                } catch (e: Exception) {
+                    _lastLog.value = "Ошибка связи с сервером: ${e.localizedMessage ?: "Недоступен"}"
+                } finally {
+                    _isRefreshing.value = false
                 }
-            } catch (e: Exception) {
-                _lastLog.value = "Ошибка подключения: ${e.localizedMessage ?: "Сервер недоступен"}"
-            } finally {
+            } else {
+                kotlinx.coroutines.delay(300)
                 _isRefreshing.value = false
+                _lastLog.value = "Локальные данные очереди обновлены"
             }
         }
     }
@@ -230,7 +261,19 @@ class WatchNextRepository(
     suspend fun togglePause() {
         val willPause = !_status.value.isPaused
         _status.value = _status.value.copy(isPaused = willPause)
-        _lastLog.value = if (willPause) "Очередь поставлена на паузу" else "Очередь возобновлена"
+        val api = apiService
+        if (!currentSettings.isDemoMode && api != null) {
+            withContext(Dispatchers.IO) {
+                try {
+                    api.togglePause()
+                    refresh()
+                } catch (e: Exception) {
+                    _lastLog.value = "Ошибка паузы: ${e.localizedMessage}"
+                }
+            }
+        } else {
+            _lastLog.value = if (willPause) "Очередь на паузе" else "Очередь продолжена"
+        }
     }
 
     suspend fun addMagnet(
@@ -240,15 +283,36 @@ class WatchNextRepository(
         season: Int,
         startEpisode: Int
     ): Result<String> {
+        val api = apiService
+        if (!currentSettings.isDemoMode && api != null) {
+            return withContext(Dispatchers.IO) {
+                try {
+                    api.addPack(
+                        ApiAddTorrentRequest(
+                            magnet = magnet,
+                            title = customTitle.ifBlank { null },
+                            kind = if (kind == PackKind.MOVIE) "movie" else "series",
+                            season = season,
+                            startEpisode = startEpisode,
+                            autoSeason = false
+                        )
+                    )
+                    refresh()
+                    Result.success("Раздача добавлена на сервер")
+                } catch (e: Exception) {
+                    Result.failure(e)
+                }
+            }
+        }
+
+        // Demo fallback
         val hash = TorrentParser.extractMagnetHash(magnet) ?: UUID.randomUUID().toString().replace("-", "")
         val displayName = customTitle.ifBlank {
             TorrentParser.extractDisplayName(magnet) ?: "Раздача #${hash.take(8)}"
         }
-
         val totalEpisodes = if (kind == PackKind.MOVIE) 1 else 10
         val episodesList = (1..totalEpisodes).map { epNum ->
             val label = if (kind == PackKind.MOVIE) "Фильм" else "S${String.format("%02d", season)}E${String.format("%02d", epNum)}"
-            val isSelected = epNum >= startEpisode
             val status = if (epNum < startEpisode) EpisodeStatus.SKIPPED else if (epNum == startEpisode) EpisodeStatus.DOWNLOADING else EpisodeStatus.WAITING_LIMIT
             EpisodeItem(
                 index = epNum - 1,
@@ -283,54 +347,92 @@ class WatchNextRepository(
             totalPacksCount = _packs.value.size,
             activeDownloadsCount = _packs.value.count { it.state == PackState.DOWNLOADING }
         )
-        _lastLog.value = "Добавлена новая раздача: $displayName"
+        _lastLog.value = "Добавлена раздача: $displayName"
         return Result.success("Раздача добавлена в очередь")
     }
 
     suspend fun changeFrom(hash: String, season: Int, startEpisode: Int) {
+        val api = apiService
+        if (!currentSettings.isDemoMode && api != null) {
+            withContext(Dispatchers.IO) {
+                try {
+                    api.setPackStart(hash, ApiSetStartRequest(season, startEpisode))
+                    refresh()
+                } catch (e: Exception) {
+                    _lastLog.value = "Ошибка /from: ${e.localizedMessage}"
+                }
+            }
+            return
+        }
+
         _packs.value = _packs.value.map { pack ->
             if (pack.hash == hash) {
                 val updatedEpisodes = pack.episodes.map { ep ->
                     val shouldSkip = ep.season < season || (ep.season == season && ep.episode < startEpisode)
-                    ep.copy(
-                        status = if (shouldSkip) EpisodeStatus.SKIPPED else ep.status
-                    )
+                    ep.copy(status = if (shouldSkip) EpisodeStatus.SKIPPED else ep.status)
                 }
-                pack.copy(
-                    season = season,
-                    startEpisode = startEpisode,
-                    episodes = updatedEpisodes
-                )
+                pack.copy(season = season, startEpisode = startEpisode, episodes = updatedEpisodes)
             } else pack
         }
-        _lastLog.value = "Начало изменено: Сезон $season, Серия $startEpisode"
+        _lastLog.value = "Старт изменён: Сезон $season, Серия $startEpisode"
     }
 
     suspend fun finishPack(hash: String) {
-        _packs.value = _packs.value.map { pack ->
-            if (pack.hash == hash) {
-                pack.copy(noNextSeason = true)
-            } else pack
+        val api = apiService
+        if (!currentSettings.isDemoMode && api != null) {
+            withContext(Dispatchers.IO) {
+                try {
+                    api.finishPack(hash)
+                    refresh()
+                } catch (e: Exception) {
+                    _lastLog.value = "Ошибка /finish: ${e.localizedMessage}"
+                }
+            }
+            return
         }
-        _lastLog.value = "Запрос следующего сезона отключён"
+
+        _packs.value = _packs.value.map { pack ->
+            if (pack.hash == hash) pack.copy(noNextSeason = true) else pack
+        }
+        _lastLog.value = "Раздача завершена"
     }
 
     suspend fun retryPack(hash: String) {
-        _packs.value = _packs.value.map { pack ->
-            if (pack.hash == hash) {
-                pack.copy(state = PackState.CHECKING)
-            } else pack
+        val api = apiService
+        if (!currentSettings.isDemoMode && api != null) {
+            withContext(Dispatchers.IO) {
+                try {
+                    api.retryPack(hash)
+                    refresh()
+                } catch (e: Exception) {
+                    _lastLog.value = "Ошибка /retry: ${e.localizedMessage}"
+                }
+            }
+            return
         }
-        _lastLog.value = "Запущена перепроверка торрента (recheck)"
+
+        _packs.value = _packs.value.map { pack ->
+            if (pack.hash == hash) pack.copy(state = PackState.CHECKING) else pack
+        }
+        _lastLog.value = "Запущена проверка"
     }
 
     suspend fun deletePack(hash: String) {
+        val api = apiService
+        if (!currentSettings.isDemoMode && api != null) {
+            withContext(Dispatchers.IO) {
+                try {
+                    api.deletePack(hash)
+                    refresh()
+                } catch (e: Exception) {
+                    _lastLog.value = "Ошибка удаления: ${e.localizedMessage}"
+                }
+            }
+            return
+        }
+
         _packs.value = _packs.value.filterNot { it.hash == hash }
-        _status.value = _status.value.copy(
-            totalPacksCount = _packs.value.size,
-            activeDownloadsCount = _packs.value.count { it.state == PackState.DOWNLOADING }
-        )
-        _lastLog.value = "Раздача удалена из очереди и qBittorrent"
+        _lastLog.value = "Раздача удалена"
     }
 
     suspend fun updateLimits(count: Int, capGb: Float?, reserveGb: Float) {
@@ -340,13 +442,25 @@ class WatchNextRepository(
             reserveGb = reserveGb
         )
         preferences.updateSettings(
-            currentSettings.copy(
-                episodeLimit = count,
-                capGb = capGb,
-                reserveGb = reserveGb
-            )
+            currentSettings.copy(episodeLimit = count, capGb = capGb, reserveGb = reserveGb)
         )
-        _lastLog.value = "Лимиты обновлены: $count серий, ${capGb ?: "∞"} ГБ, резерв $reserveGb ГБ"
+
+        val api = apiService
+        if (!currentSettings.isDemoMode && api != null) {
+            withContext(Dispatchers.IO) {
+                try {
+                    api.updateLimits(
+                        ApiUpdateLimitsRequest(
+                            episodeCountLimit = count,
+                            capGb = capGb,
+                            reserveGb = reserveGb
+                        )
+                    )
+                } catch (e: Exception) {
+                    _lastLog.value = "Ошибка обновления лимитов: ${e.localizedMessage}"
+                }
+            }
+        }
     }
 
     suspend fun searchTorrents(
@@ -356,37 +470,71 @@ class WatchNextRepository(
         voiceFilter: String? = null,
         qualityFilter: String? = null
     ): List<TorrentSearchResult> {
-        // Return realistic RuTor / Jackett search results with accurate parsed studio badges
+        val api = apiService
+        if (!currentSettings.isDemoMode && api != null) {
+            return withContext(Dispatchers.IO) {
+                try {
+                    val apiResults = api.searchTorrents(
+                        query = query,
+                        kind = if (kind == PackKind.MOVIE) "movie" else "series",
+                        minSeeders = minSeeders,
+                        voiceFilter = voiceFilter,
+                        qualityFilter = qualityFilter
+                    )
+                    apiResults.map { r ->
+                        TorrentSearchResult(
+                            title = r.title,
+                            tracker = r.tracker,
+                            size = r.size,
+                            seeders = r.seeders,
+                            peers = r.peers,
+                            quality = r.quality,
+                            voices = r.voices,
+                            magnet = r.magnet,
+                            link = r.link,
+                            detectedKind = if (r.detectedKind.equals("movie", ignoreCase = true)) PackKind.MOVIE else PackKind.SERIES,
+                            detectedSeason = r.detectedSeason,
+                            detectedStartEpisode = r.detectedStartEpisode
+                        )
+                    }
+                } catch (e: Exception) {
+                    _lastLog.value = "Ошибка поиска через сервер: ${e.localizedMessage}"
+                    emptyList()
+                }
+            }
+        }
+
+        // Demo results fallback
         val cleanQuery = query.trim()
         val mockResults = listOf(
             TorrentSearchResult(
-                title = "$cleanQuery / Release EN (2024) WEB-DL 2160p 4K HDR | LostFilm",
+                title = "$cleanQuery / Release (2024) WEB-DL 2160p 4K | LostFilm",
                 tracker = "RuTor",
                 size = 38_500_000_000L,
                 seeders = 142,
                 peers = 18,
-                quality = "2160p · WEB-DL",
-                voices = listOf("LostFilm", "Оригинал"),
+                quality = "2160p · 4K",
+                voices = listOf("LostFilm"),
                 magnet = "magnet:?xt=urn:btih:38bdf8818cf84f46e50284c7161b220d11170001&dn=$cleanQuery.2160p.LostFilm",
                 detectedKind = kind,
                 detectedSeason = 1,
                 detectedStartEpisode = 1
             ),
             TorrentSearchResult(
-                title = "$cleanQuery / Release EN (2024) WEB-DL 1080p | HDRezka Studio",
+                title = "$cleanQuery (2024) WEB-DL 1080p | HDRezka Studio",
                 tracker = "RuTor",
                 size = 14_200_000_000L,
                 seeders = 215,
                 peers = 34,
                 quality = "1080p · WEB-DL",
-                voices = listOf("HDRezka", "MVO"),
+                voices = listOf("HDRezka"),
                 magnet = "magnet:?xt=urn:btih:38bdf8818cf84f46e50284c7161b220d11170002&dn=$cleanQuery.1080p.Rezka",
                 detectedKind = kind,
                 detectedSeason = 1,
                 detectedStartEpisode = 1
             ),
             TorrentSearchResult(
-                title = "$cleanQuery (Сезон 1, Серии 1-8 из 8) (2024) BDRip 1080p | Кубик в кубе",
+                title = "$cleanQuery (Сезон 1, Серии 1-8) (2024) BDRip 1080p | Кубик в кубе",
                 tracker = "RuTracker",
                 size = 18_900_000_000L,
                 seeders = 89,
@@ -395,32 +543,6 @@ class WatchNextRepository(
                 voices = listOf("Кубик в кубе"),
                 magnet = "magnet:?xt=urn:btih:38bdf8818cf84f46e50284c7161b220d11170003&dn=$cleanQuery.1080p.Kubik",
                 detectedKind = PackKind.SERIES,
-                detectedSeason = 1,
-                detectedStartEpisode = 1
-            ),
-            TorrentSearchResult(
-                title = "$cleanQuery (Сезон 2, Серии 1-10) WEB-DL 1080p | Red Head Sound (Дубляж)",
-                tracker = "NNMClub",
-                size = 22_400_000_000L,
-                seeders = 64,
-                peers = 9,
-                quality = "1080p · WEB-DL",
-                voices = listOf("Red Head Sound", "Дубляж"),
-                magnet = "magnet:?xt=urn:btih:38bdf8818cf84f46e50284c7161b220d11170004&dn=$cleanQuery.S02.RHS",
-                detectedKind = PackKind.SERIES,
-                detectedSeason = 2,
-                detectedStartEpisode = 1
-            ),
-            TorrentSearchResult(
-                title = "$cleanQuery (2024) WEB-DLRip 720p | NewStudio",
-                tracker = "RuTor",
-                size = 7_100_000_000L,
-                seeders = 41,
-                peers = 5,
-                quality = "720p · WEB-DL",
-                voices = listOf("NewStudio"),
-                magnet = "magnet:?xt=urn:btih:38bdf8818cf84f46e50284c7161b220d11170005&dn=$cleanQuery.720p.NewStudio",
-                detectedKind = kind,
                 detectedSeason = 1,
                 detectedStartEpisode = 1
             )
@@ -434,6 +556,20 @@ class WatchNextRepository(
     }
 
     suspend fun addSubscription(title: String, quality: String, voice: String) {
+        val api = apiService
+        if (!currentSettings.isDemoMode && api != null) {
+            withContext(Dispatchers.IO) {
+                try {
+                    api.addSubscription(ApiAddSubscriptionRequest(title, quality, voice))
+                    refresh()
+                    _lastLog.value = "Подписка оформлена: $title"
+                } catch (e: Exception) {
+                    _lastLog.value = "Ошибка создания подписки: ${e.localizedMessage}"
+                }
+            }
+            return
+        }
+
         val newSub = SubscriptionItem(
             id = "sub-${System.currentTimeMillis()}",
             showTitle = title,
@@ -445,15 +581,41 @@ class WatchNextRepository(
             nextEpisodeDate = "В расписании TVmaze"
         )
         _subscriptions.value = _subscriptions.value + newSub
-        _lastLog.value = "Оформлена подписка на: $title"
+        _lastLog.value = "Оформлена подписка: $title"
     }
 
     suspend fun removeSubscription(id: String) {
+        val api = apiService
+        if (!currentSettings.isDemoMode && api != null) {
+            withContext(Dispatchers.IO) {
+                try {
+                    api.removeSubscription(id)
+                    refresh()
+                } catch (e: Exception) {
+                    _lastLog.value = "Ошибка удаления подписки: ${e.localizedMessage}"
+                }
+            }
+            return
+        }
+
         _subscriptions.value = _subscriptions.value.filterNot { it.id == id }
-        _lastLog.value = "Подписка удалена"
     }
 
     suspend fun importSubscriptionRelease(subId: String) {
+        val api = apiService
+        if (!currentSettings.isDemoMode && api != null) {
+            withContext(Dispatchers.IO) {
+                try {
+                    api.importSubscriptionRelease(subId)
+                    refresh()
+                    _lastLog.value = "Релиз импортирован в очередь"
+                } catch (e: Exception) {
+                    _lastLog.value = "Ошибка импорта релиза: ${e.localizedMessage}"
+                }
+            }
+            return
+        }
+
         val sub = _subscriptions.value.find { it.id == subId } ?: return
         val magnet = sub.candidateReleaseMagnet ?: "magnet:?xt=urn:btih:${UUID.randomUUID()}&dn=${sub.showTitle}"
         addMagnet(
@@ -472,14 +634,48 @@ class WatchNextRepository(
     suspend fun testConnection(settings: AppSettings): Pair<Boolean, String> {
         return withContext(Dispatchers.IO) {
             try {
-                val req = Request.Builder()
-                    .url(settings.serverUrl.trimEnd('/'))
-                    .build()
-                val response = client.newCall(req).execute()
-                Pair(true, "Соединение успешно! Код ответа: ${response.code}")
+                val testApi = WatchNextApiService.create(settings.serverUrl, settings.apiToken)
+                val status = testApi.getStatus()
+                Pair(
+                    true,
+                    "Успешно! Сервер WatchNext онлайн: ${status.totalPacksCount} раздач, ${status.diskFreeGb.toInt()} ГБ свободно."
+                )
             } catch (e: Exception) {
-                Pair(false, "Не удалось подключиться к ${settings.serverUrl}: ${e.message ?: "Таймаут или неверный адрес"}")
+                Pair(false, "Не удалось подключиться: ${e.localizedMessage ?: "Таймаут или неверный URL"}")
             }
+        }
+    }
+
+    private fun mapPackState(state: String): PackState {
+        return when (state.uppercase()) {
+            "DOWNLOADING" -> PackState.DOWNLOADING
+            "READY" -> PackState.READY
+            "CHECKING" -> PackState.CHECKING
+            "STOPPED" -> PackState.STOPPED
+            "METADATA" -> PackState.METADATA
+            "COMPLETE" -> PackState.COMPLETE
+            else -> PackState.DOWNLOADING
+        }
+    }
+
+    private fun mapEpisodeStatus(status: String): EpisodeStatus {
+        return when (status.uppercase()) {
+            "COMPLETED" -> EpisodeStatus.COMPLETED
+            "DOWNLOADING" -> EpisodeStatus.DOWNLOADING
+            "WAITING_LIMIT" -> EpisodeStatus.WAITING_LIMIT
+            "PLAYED" -> EpisodeStatus.PLAYED
+            "SKIPPED" -> EpisodeStatus.SKIPPED
+            else -> EpisodeStatus.WAITING_LIMIT
+        }
+    }
+
+    private fun mapSubscriptionStatus(status: String): SubscriptionStatus {
+        return when (status.uppercase()) {
+            "ACTIVE" -> SubscriptionStatus.ACTIVE
+            "EPISODE_OUT" -> SubscriptionStatus.EPISODE_OUT
+            "RELEASE_FOUND" -> SubscriptionStatus.RELEASE_FOUND
+            "UP_TO_DATE" -> SubscriptionStatus.UP_TO_DATE
+            else -> SubscriptionStatus.ACTIVE
         }
     }
 }
