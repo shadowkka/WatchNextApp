@@ -28,14 +28,32 @@ jobs:
 
       - name: Prepare build environment
         run: |
-          # Restore debug keystore from tracked base64 template
+          # Restore debug keystore from base64 if present, otherwise generate standard debug keystore
           if [ -f debug.keystore.base64 ]; then
+            echo "Restoring debug.keystore from debug.keystore.base64..."
             base64 -d debug.keystore.base64 > debug.keystore
+          elif [ ! -f debug.keystore ]; then
+            echo "debug.keystore.base64 not found, generating debug.keystore with keytool..."
+            keytool -genkey -v \
+              -keystore debug.keystore \
+              -storepass android \
+              -alias androiddebugkey \
+              -keypass android \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
           fi
+
+          # Verify debug.keystore exists and show details
+          ls -lh debug.keystore
+
           # Ensure .env exists for Secrets Gradle plugin
           if [ ! -f .env ]; then
             cp .env.example .env 2>/dev/null || touch .env
           fi
+
+          # Ensure gradlew executable permission
           chmod +x gradlew
 
       - name: Build Debug APK
